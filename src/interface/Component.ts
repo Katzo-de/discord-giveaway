@@ -13,3 +13,7 @@ export interface Button extends Component {
 export interface Modal extends Component {
     execute: (client: Bot, interaction: ModalSubmitInteraction) => Promise<any>;
 }
+
+export interface SelectMenu extends Component {
+    execute: (client: Bot, interaction: any) => Promise<any>;
+}

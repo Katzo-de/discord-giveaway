@@ -1,7 +1,7 @@
 import { Collection, REST, Routes } from 'discord.js';
 import { Bot } from '../Bot';
 import { Command } from '../interface/Command';
-import { Button, Modal } from '../interface/Component';
+import { Button, Modal, SelectMenu } from '../interface/Component';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -9,6 +9,7 @@ export class InteractionHandler {
     public commands: Collection<string, Command> = new Collection();
     public buttons: Collection<string, Button> = new Collection();
     public modals: Collection<string, Modal> = new Collection();
+    public selectMenus: Collection<string, SelectMenu> = new Collection();
 
     constructor(private client: Bot) {}
 
@@ -16,6 +17,7 @@ export class InteractionHandler {
         await this.loadCommands();
         await this.loadButtons();
         await this.loadModals();
+        await this.loadSelectMenus();
         await this.registerCommands();
     }
 
@@ -55,6 +57,19 @@ export class InteractionHandler {
             const { default: modal } = await import(file);
             if (!modal || !modal.customId || !modal.execute) continue;
             this.modals.set(modal.customId, modal);
+        }
+    }
+
+    private async loadSelectMenus() {
+        const menusPath = path.join(__dirname, '../interaction/selectMenus');
+        if (!fs.existsSync(menusPath)) return;
+
+        const menuFiles = this.getFiles(menusPath);
+
+        for (const file of menuFiles) {
+            const { default: menu } = await import(file);
+            if (!menu || !menu.customId || !menu.execute) continue;
+            this.selectMenus.set(menu.customId, menu);
         }
     }
 

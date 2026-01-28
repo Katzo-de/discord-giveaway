@@ -2,9 +2,13 @@ import { Client, GatewayIntentBits } from 'discord.js';
 import { InteractionHandler } from './handlers/InteractionHandler';
 import { EventHandler } from './handlers/EventHandler';
 
+import { IDatabase } from './database/interfaces/IDatabase';
+import { DatabaseFactory } from './database/DatabaseFactory';
+
 export class Bot extends Client {
     public interactionHandler: InteractionHandler;
     public eventHandler: EventHandler;
+    public database: IDatabase;
 
     constructor() {
         super({
@@ -16,6 +20,7 @@ export class Bot extends Client {
 
         this.interactionHandler = new InteractionHandler(this);
         this.eventHandler = new EventHandler(this);
+        this.database = DatabaseFactory.createDatabase();
     }
 
     public async start(): Promise<void> {

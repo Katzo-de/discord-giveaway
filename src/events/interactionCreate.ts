@@ -23,7 +23,14 @@ const event: Event<'interactionCreate'> = {
                 }
             }
         } else if (interaction.isButton()) {
-            const button = client.interactionHandler.buttons.get(interaction.customId);
+            let button = client.interactionHandler.buttons.get(interaction.customId);
+            
+            // If no exact match, check for dynamic ID (prefix matching)
+            if (!button) {
+                const prefix = interaction.customId.split(':')[0];
+                button = client.interactionHandler.buttons.get(prefix);
+            }
+
             if (!button) return;
 
             try {
@@ -41,7 +48,7 @@ const event: Event<'interactionCreate'> = {
                 }
             }
         } else if (interaction.isModalSubmit()) {
-            const modal = client.interactionHandler.modals.get(interaction.customId);
+            const modal = client.interactionHandler.modals.get(interaction.customId.split(':')[0]);
             if (!modal) return;
 
             try {
@@ -53,6 +60,24 @@ const event: Event<'interactionCreate'> = {
                         await interaction.followUp({ content: 'There was an error while executing this modal!', flags: MessageFlags.Ephemeral });
                     } else {
                         await interaction.reply({ content: 'There was an error while executing this modal!', flags: MessageFlags.Ephemeral });
+                    }
+                } catch (err) {
+                    console.error('Failed to send error message:', err);
+                }
+            }
+        } else if (interaction.isStringSelectMenu()) {
+            const menu = client.interactionHandler.selectMenus.get(interaction.customId);
+            if (!menu) return;
+
+            try {
+                await menu.execute(client, interaction);
+            } catch (error) {
+                console.error(error);
+                try {
+                    if (interaction.replied || interaction.deferred) {
+                        await interaction.followUp({ content: 'There was an error while executing this select menu!', flags: MessageFlags.Ephemeral });
+                    } else {
+                        await interaction.reply({ content: 'There was an error while executing this select menu!', flags: MessageFlags.Ephemeral });
                     }
                 } catch (err) {
                     console.error('Failed to send error message:', err);

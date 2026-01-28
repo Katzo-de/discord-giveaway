@@ -3,6 +3,8 @@ CREATE TABLE IF NOT EXISTS giveaways (
     message_id TEXT NOT NULL,
     channel_id TEXT NOT NULL,
     guild_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
     prize TEXT NOT NULL,
     winners INTEGER NOT NULL DEFAULT 1,
     end_time TEXT NOT NULL,
