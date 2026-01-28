@@ -79,10 +79,19 @@ export class InteractionHandler {
         try {
             console.log('Started refreshing application (/) commands.');
 
-            await rest.put(
-                Routes.applicationCommands(this.client.user!.id),
-                { body: commandsData },
-            );
+            if (process.env.GUILD_ID) {
+                await rest.put(
+                    Routes.applicationGuildCommands(process.env.CLIENT_ID!, process.env.GUILD_ID),
+                    { body: commandsData },
+                );
+                console.log(`Successfully reloaded application (/) commands for guild ${process.env.GUILD_ID}.`);
+            } else {
+                await rest.put(
+                    Routes.applicationCommands(process.env.CLIENT_ID!),
+                    { body: commandsData },
+                );
+                console.log('Successfully reloaded application (/) commands globally.');
+            }
 
             console.log('Successfully reloaded application (/) commands.');
         } catch (error) {

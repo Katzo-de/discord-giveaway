@@ -1,5 +1,5 @@
 import { Event } from '../interface/Event';
-import { Interaction } from 'discord.js';
+import { Interaction, MessageFlags } from 'discord.js';
 
 const event: Event<'interactionCreate'> = {
     name: 'interactionCreate',
@@ -12,10 +12,14 @@ const event: Event<'interactionCreate'> = {
                 await command.execute(client, interaction);
             } catch (error) {
                 console.error(error);
-                if (interaction.replied || interaction.deferred) {
-                    await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
-                } else {
-                    await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+                try {
+                    if (interaction.replied || interaction.deferred) {
+                        await interaction.followUp({ content: 'There was an error while executing this command!', flags: MessageFlags.Ephemeral });
+                    } else {
+                        await interaction.reply({ content: 'There was an error while executing this command!', flags: MessageFlags.Ephemeral });
+                    }
+                } catch (err) {
+                    console.error('Failed to send error message:', err);
                 }
             }
         } else if (interaction.isButton()) {
@@ -26,7 +30,15 @@ const event: Event<'interactionCreate'> = {
                 await button.execute(client, interaction);
             } catch (error) {
                 console.error(error);
-                await interaction.reply({ content: 'There was an error while executing this button!', ephemeral: true });
+                try {
+                    if (interaction.replied || interaction.deferred) {
+                        await interaction.followUp({ content: 'There was an error while executing this button!', flags: MessageFlags.Ephemeral });
+                    } else {
+                        await interaction.reply({ content: 'There was an error while executing this button!', flags: MessageFlags.Ephemeral });
+                    }
+                } catch (err) {
+                    console.error('Failed to send error message:', err);
+                }
             }
         } else if (interaction.isModalSubmit()) {
             const modal = client.interactionHandler.modals.get(interaction.customId);
@@ -36,7 +48,15 @@ const event: Event<'interactionCreate'> = {
                 await modal.execute(client, interaction);
             } catch (error) {
                 console.error(error);
-                await interaction.reply({ content: 'There was an error while executing this modal!', ephemeral: true });
+                try {
+                    if (interaction.replied || interaction.deferred) {
+                        await interaction.followUp({ content: 'There was an error while executing this modal!', flags: MessageFlags.Ephemeral });
+                    } else {
+                        await interaction.reply({ content: 'There was an error while executing this modal!', flags: MessageFlags.Ephemeral });
+                    }
+                } catch (err) {
+                    console.error('Failed to send error message:', err);
+                }
             }
         }
     },

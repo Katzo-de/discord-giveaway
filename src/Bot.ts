@@ -11,8 +11,6 @@ export class Bot extends Client {
             intents: [
                 GatewayIntentBits.Guilds,
                 GatewayIntentBits.GuildMessages,
-                GatewayIntentBits.MessageContent,
-                GatewayIntentBits.GuildMembers,
             ],
         });
 
@@ -21,7 +19,7 @@ export class Bot extends Client {
     }
 
     public async start(): Promise<void> {
-        this.login(process.env.DISCORD_TOKEN);
+        await this.login(process.env.DISCORD_TOKEN);
 
         await this.interactionHandler.loadInteractions();
         await this.eventHandler.loadEvents();

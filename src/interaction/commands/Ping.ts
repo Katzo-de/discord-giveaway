@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { Command } from '../../interface/Command';
 import { Bot } from '../../Bot';
 
@@ -14,9 +14,9 @@ const command: Command = {
     execute: async (client: Bot, interaction) => {
         const echo = interaction.options.getString('echo');
         if (echo) {
-            await interaction.reply({ content: `Pong! You said: ${echo}`, ephemeral: true });
+            await interaction.reply({ content: `Pong! You said: ${echo}`, flags: MessageFlags.Ephemeral });
         } else {
-            await interaction.reply({ content: 'Pong!', ephemeral: true });
+            await interaction.reply({ content: 'Pong!', flags: MessageFlags.Ephemeral });
         }
     }
 };
