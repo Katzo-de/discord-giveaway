@@ -17,7 +17,10 @@ DiscordGiveaway is a modern Discord bot built with TypeScript and Node.js. It si
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) (v18 or higher)
-- [MySQL](https://www.mysql.com/) database
+- A supported database:
+  - [MySQL](https://www.mysql.com/)
+  - [PostgreSQL](https://www.postgresql.org/)
+  - [SQLite](https://www.sqlite.org/) (no external server required, great for testing)
 - A [Discord Bot Token](https://discord.com/developers/applications)
 
 ## Installation
@@ -34,6 +37,7 @@ DiscordGiveaway is a modern Discord bot built with TypeScript and Node.js. It si
         restart: always
         environment:
           - DISCORD_TOKEN=your_token_here
+          - DB_TYPE=mysql
           - DB_HOST=db
           - DB_USER=root
           - DB_PASSWORD=your_db_password
@@ -80,10 +84,17 @@ DiscordGiveaway is a modern Discord bot built with TypeScript and Node.js. It si
     DISCORD_TOKEN=your_discord_bot_token
     
     # Database Configuration
+    # Supported types: mysql, postgres, sqlite
+    DB_TYPE=mysql
+    
+    # For MySQL / PostgreSQL
     DB_HOST=localhost
     DB_USER=root
     DB_PASSWORD=your_password
     DB_NAME=discord_giveaway
+
+    # For SQLite
+    # DB_FILENAME=giveaways.sqlite
     ```
 
 4.  **Build and Start:**
