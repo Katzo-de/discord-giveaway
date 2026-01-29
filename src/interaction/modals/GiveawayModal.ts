@@ -1,7 +1,7 @@
 import { Modal } from '../../interface/Component';
 import { Bot } from '../../Bot';
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, ModalSubmitInteraction, ContainerBuilder, TextDisplayBuilder } from 'discord.js';
-import { parseDuration } from '../../utils/timeUtils';
+import { parseDuration, parseDate } from '../../utils/timeUtils';
 
 const modal: Modal = {
     customId: 'giveaway_create',
@@ -14,23 +14,42 @@ const modal: Modal = {
         const parts = interaction.customId.split(':');
         let durationString = parts.length > 1 ? parts[1] : null;
 
+        let endTime: Date | null = null;
+        let durationMs: number | null = null;
+
         if (durationString === 'Custom') {
-            durationString = interaction.fields.getTextInputValue('custom_duration');
+            const customInput = interaction.fields.getTextInputValue('custom_duration');
+            durationMs = parseDuration(customInput);
+            if (durationMs) {
+                endTime = new Date(Date.now() + durationMs);
+            }
+        } else if (durationString === 'Date') {
+            const dateInput = interaction.fields.getTextInputValue('date_input');
+            const timeInput = interaction.fields.getTextInputValue('time_input');
+            endTime = parseDate(dateInput, timeInput);
+        } else if (durationString) {
+            durationMs = parseDuration(durationString);
+            if (durationMs) {
+                endTime = new Date(Date.now() + durationMs);
+            }
         }
 
-        if (!durationString) {
-            await interaction.reply({ content: 'Could not determine duration.', flags: MessageFlags.Ephemeral });
+        if (!endTime) {
+            await interaction.reply({ content: 'Invalid duration or date format! For Custom duration use format like 1h, 30m. For Date use DD.MM with Time HH:mm.', flags: MessageFlags.Ephemeral });
             return;
         }
 
-        const durationMs = parseDuration(durationString);
-
-        if (!durationMs) {
-            await interaction.reply({ content: 'Invalid duration format! Please use format like 1h, 30m, 2d.', flags: MessageFlags.Ephemeral });
+        // Check if date is in the past (extra safety, though parseDate infers next year usually only if exact match or simple comparison)
+        // parseDate already handles "if in past, move to next year" logic for the specific day/month.
+        // But if user gives a time shortly in the past for TODAY, parseDate might have returned today's date but earlier time?
+        // Let's check:
+        // parseDate logic: "If the constructed date is in the past, assume it's meant for next year"
+        // So it should be safe. But let's verify if 'now' check is strictly > now.
+        if (endTime.getTime() <= Date.now()) {
+            // In rare edge case where parseDate didn't catch it or logic is slightly off
+            await interaction.reply({ content: 'The end time cannot be in the past!', flags: MessageFlags.Ephemeral });
             return;
         }
-
-        const endTime = new Date(Date.now() + durationMs);
 
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 

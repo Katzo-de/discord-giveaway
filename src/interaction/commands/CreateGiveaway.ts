@@ -20,7 +20,9 @@ const command: Command = {
                 new StringSelectMenuOptionBuilder().setLabel('2 Days').setValue('2d'),
                 new StringSelectMenuOptionBuilder().setLabel('5 Days').setValue('5d'),
                 new StringSelectMenuOptionBuilder().setLabel('7 Days').setValue('7d'),
-                new StringSelectMenuOptionBuilder().setLabel('Custom').setValue('Custom')
+
+                new StringSelectMenuOptionBuilder().setLabel('Specific Date').setValue('Date'),
+                new StringSelectMenuOptionBuilder().setLabel('Custom Duration').setValue('Custom')
             );
 
         const row = new ActionRowBuilder<StringSelectMenuBuilder>()

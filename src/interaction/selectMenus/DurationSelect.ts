@@ -7,6 +7,7 @@ const selectMenu: SelectMenu = {
     execute: async (client: Bot, interaction: StringSelectMenuInteraction) => {
         const duration = interaction.values[0];
         const isCustom = duration === 'Custom';
+        const isDate = duration === 'Date';
 
         // Encode duration in customId: giveaway_create:<duration>
         const modalCustomId = `giveaway_create:${duration}`;
@@ -45,8 +46,25 @@ const selectMenu: SelectMenu = {
                 .setLabel("Custom Duration (e.g. 30m, 1d)")
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true);
-            
+
             rows.push(new ActionRowBuilder<TextInputBuilder>().addComponents(durationInput));
+        } else if (isDate) {
+            const dateInput = new TextInputBuilder()
+                .setCustomId('date_input')
+                .setLabel("Date (DD.MM)")
+                .setPlaceholder("31.12")
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true);
+
+            const timeInput = new TextInputBuilder()
+                .setCustomId('time_input')
+                .setLabel("Time (HH:mm)")
+                .setPlaceholder("23:59")
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true);
+
+            rows.push(new ActionRowBuilder<TextInputBuilder>().addComponents(dateInput));
+            rows.push(new ActionRowBuilder<TextInputBuilder>().addComponents(timeInput));
         }
 
         modal.addComponents(...rows);
