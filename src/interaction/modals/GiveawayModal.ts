@@ -84,7 +84,8 @@ const modal: Modal = {
             const row = new ActionRowBuilder<ButtonBuilder>()
                 .addComponents(joinButton);
 
-            await sentMessage.edit({ components: [row] });
+            embed.setFooter({ text: `Ends at • ID: ${giveaway.id}` });
+            await sentMessage.edit({ embeds: [embed], components: [row] });
 
             await interaction.editReply({ content: 'Giveaway created successfully!' });
 
