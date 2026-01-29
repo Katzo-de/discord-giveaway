@@ -1,6 +1,6 @@
 import { Modal } from '../../interface/Component';
 import { Bot } from '../../Bot';
-import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, ModalSubmitInteraction } from 'discord.js';
+import { ContainerBuilder, TextDisplayBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, ModalSubmitInteraction, EmbedBuilder } from 'discord.js';
 import { parseDuration } from '../../utils/timeUtils';
 
 const modal: Modal = {
@@ -35,24 +35,36 @@ const modal: Modal = {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         try {
-            const embed = new EmbedBuilder()
-                .setTitle(title)
-                .setDescription(description)
-                .addFields(
-                    { name: 'Prize', value: prize, inline: true },
-                    { name: 'Ends In', value: `<t:${Math.floor(endTime.getTime() / 1000)}:R>`, inline: true },
-                    { name: 'Hosted By', value: interaction.user.toString(), inline: true }
-                )
-                .setColor('#FF0000')
-                .setFooter({ text: 'Ends at' })
-                .setTimestamp(endTime);
+            // New Container Structure
+            const container = new ContainerBuilder();
+            
+            const titleDisplay = new TextDisplayBuilder()
+                .setContent(`**${title}**`);
+            
+            const descDisplay = new TextDisplayBuilder()
+                .setContent(description);
+
+            const prizeDisplay = new TextDisplayBuilder()
+                .setContent(`**Prize:** ${prize}`);
+
+            const endsInDisplay = new TextDisplayBuilder()
+                .setContent(`**Ends In:** <t:${Math.floor(endTime.getTime() / 1000)}:R>`);
+
+            const hostedByDisplay = new TextDisplayBuilder()
+                .setContent(`**Hosted By:** ${interaction.user.toString()}`);
+            
+            const footerDisplay = new TextDisplayBuilder()
+                .setContent(`Ends at • ID: (Pending)`); // will update
+
+            container.addTextDisplayComponents(titleDisplay, descDisplay, prizeDisplay, endsInDisplay, hostedByDisplay, footerDisplay);
 
             if (!interaction.channel || !interaction.channel.isSendable()) {
                  await interaction.editReply({ content: 'Cannot send messages in this channel.' });
                  return;
             }
 
-            const sentMessage = await interaction.channel.send({ embeds: [embed] });
+            // Note: We need to cast container to any because types might be strict about ActionRow only
+            const sentMessage = await interaction.channel.send({ components: [container as any] });
             
             if (!sentMessage) {
                 await interaction.editReply({ content: 'Failed to send giveaway message.' });
@@ -69,7 +81,7 @@ const modal: Modal = {
 
             // Use 'query' to fetch ID
             const rows = await db.query(`SELECT id FROM giveaways WHERE message_id = ?`, [sentMessage.id]);
-            const giveaway = rows && rows[0]; // Better-sqlite3 typically returns array
+            const giveaway = rows && rows[0]; 
             
             if (!giveaway) {
                  await interaction.editReply({ content: 'Failed to save giveaway to database.' });
@@ -81,11 +93,28 @@ const modal: Modal = {
                 .setLabel('🎉 Join Giveaway')
                 .setStyle(ButtonStyle.Primary);
 
-            const row = new ActionRowBuilder<ButtonBuilder>()
-                .addComponents(joinButton);
+            const endButton = new ButtonBuilder()
+                .setCustomId(`giveaway_end:${giveaway.id}`)
+                .setLabel('End Giveaway')
+                .setStyle(ButtonStyle.Danger);
 
-            embed.setFooter({ text: `Ends at • ID: ${giveaway.id}` });
-            await sentMessage.edit({ embeds: [embed], components: [row] });
+            const rerollButton = new ButtonBuilder()
+                .setCustomId(`giveaway_reroll:${giveaway.id}`)
+                .setLabel('Reroll Prize')
+                .setStyle(ButtonStyle.Secondary);
+
+            const row = new ActionRowBuilder<ButtonBuilder>()
+                .addComponents(joinButton, endButton, rerollButton);
+
+            // Update footer with ID
+            footerDisplay.setContent(`Ends at • ID: ${giveaway.id}`);
+             
+            // Rebuild container components? Or just modify object? Builders are mutable usually? 
+            // Ideally clear and add again or just creating new container
+            const pagedContainer = new ContainerBuilder()
+                .addTextDisplayComponents(titleDisplay, descDisplay, prizeDisplay, endsInDisplay, hostedByDisplay, footerDisplay);
+
+            await sentMessage.edit({ components: [pagedContainer as any, row] });
 
             await interaction.editReply({ content: 'Giveaway created successfully!' });
 
