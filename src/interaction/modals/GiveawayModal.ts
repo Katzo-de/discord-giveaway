@@ -1,6 +1,6 @@
 import { Modal } from '../../interface/Component';
 import { Bot } from '../../Bot';
-import { ContainerBuilder, TextDisplayBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, ModalSubmitInteraction, EmbedBuilder } from 'discord.js';
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, ModalSubmitInteraction, ContainerBuilder, TextDisplayBuilder } from 'discord.js';
 import { parseDuration } from '../../utils/timeUtils';
 
 const modal: Modal = {
@@ -9,7 +9,7 @@ const modal: Modal = {
         const title = interaction.fields.getTextInputValue('title');
         const description = interaction.fields.getTextInputValue('description');
         const prize = interaction.fields.getTextInputValue('prize');
-        
+
         // Parse customId "giveaway_create:<duration>"
         const parts = interaction.customId.split(':');
         let durationString = parts.length > 1 ? parts[1] : null;
@@ -19,8 +19,8 @@ const modal: Modal = {
         }
 
         if (!durationString) {
-             await interaction.reply({ content: 'Could not determine duration.', flags: MessageFlags.Ephemeral });
-             return;
+            await interaction.reply({ content: 'Could not determine duration.', flags: MessageFlags.Ephemeral });
+            return;
         }
 
         const durationMs = parseDuration(durationString);
@@ -37,42 +37,38 @@ const modal: Modal = {
         try {
             // New Container Structure
             const container = new ContainerBuilder();
-            
+
             const titleDisplay = new TextDisplayBuilder()
-                .setContent(`**${title}**`);
-            
+                .setContent(`# 🎉 ${title} 🎉`);
+
             const descDisplay = new TextDisplayBuilder()
                 .setContent(description);
 
-            const prizeDisplay = new TextDisplayBuilder()
-                .setContent(`**Prize:** ${prize}`);
+            const infoDisplay = new TextDisplayBuilder()
+                .setContent(`🏆 **Prize:** ${prize}\n⏰ **Ends:** <t:${Math.floor(endTime.getTime() / 1000)}:R>\n👤 **Hosted By:** ${interaction.user.toString()}`);
 
-            const endsInDisplay = new TextDisplayBuilder()
-                .setContent(`**Ends In:** <t:${Math.floor(endTime.getTime() / 1000)}:R>`);
-
-            const hostedByDisplay = new TextDisplayBuilder()
-                .setContent(`**Hosted By:** ${interaction.user.toString()}`);
-            
             const footerDisplay = new TextDisplayBuilder()
                 .setContent(`Ends at • ID: (Pending)`); // will update
 
-            container.addTextDisplayComponents(titleDisplay, descDisplay, prizeDisplay, endsInDisplay, hostedByDisplay, footerDisplay);
+            container.addTextDisplayComponents(titleDisplay, descDisplay, infoDisplay, footerDisplay);
 
             if (!interaction.channel || !interaction.channel.isSendable()) {
-                 await interaction.editReply({ content: 'Cannot send messages in this channel.' });
-                 return;
+                await interaction.editReply({ content: 'Cannot send messages in this channel.' });
+                return;
             }
 
-            // Note: We need to cast container to any because types might be strict about ActionRow only
-            const sentMessage = await interaction.channel.send({ components: [container as any] });
-            
+            const sentMessage = await interaction.channel.send({
+                components: [container as any],
+                flags: MessageFlags.IsComponentsV2
+            });
+
             if (!sentMessage) {
                 await interaction.editReply({ content: 'Failed to send giveaway message.' });
                 return;
             }
 
             const db = client.database;
-            
+
             // Use 'execute' for INSERT
             await db.execute(
                 `INSERT INTO giveaways (message_id, channel_id, guild_id, title, description, prize, end_time, hosted_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -81,26 +77,26 @@ const modal: Modal = {
 
             // Use 'query' to fetch ID
             const rows = await db.query(`SELECT id FROM giveaways WHERE message_id = ?`, [sentMessage.id]);
-            const giveaway = rows && rows[0]; 
-            
+            const giveaway = rows && rows[0];
+
             if (!giveaway) {
-                 await interaction.editReply({ content: 'Failed to save giveaway to database.' });
-                 return;
+                await interaction.editReply({ content: 'Failed to save giveaway to database.' });
+                return;
             }
-            
+
             const joinButton = new ButtonBuilder()
                 .setCustomId(`join_giveaway:${giveaway.id}`)
-                .setLabel('🎉 Join Giveaway')
-                .setStyle(ButtonStyle.Primary);
+                .setLabel('🎉 Join')
+                .setStyle(ButtonStyle.Success);
 
             const endButton = new ButtonBuilder()
                 .setCustomId(`giveaway_end:${giveaway.id}`)
-                .setLabel('End Giveaway')
+                .setLabel('End')
                 .setStyle(ButtonStyle.Danger);
 
             const rerollButton = new ButtonBuilder()
                 .setCustomId(`giveaway_reroll:${giveaway.id}`)
-                .setLabel('Reroll Prize')
+                .setLabel('Reroll')
                 .setStyle(ButtonStyle.Secondary);
 
             const row = new ActionRowBuilder<ButtonBuilder>()
@@ -108,13 +104,17 @@ const modal: Modal = {
 
             // Update footer with ID
             footerDisplay.setContent(`Ends at • ID: ${giveaway.id}`);
-             
+
             // Rebuild container components? Or just modify object? Builders are mutable usually? 
             // Ideally clear and add again or just creating new container
             const pagedContainer = new ContainerBuilder()
-                .addTextDisplayComponents(titleDisplay, descDisplay, prizeDisplay, endsInDisplay, hostedByDisplay, footerDisplay);
+                .addTextDisplayComponents(titleDisplay, descDisplay, infoDisplay, footerDisplay);
 
-            await sentMessage.edit({ components: [pagedContainer as any, row] });
+            await sentMessage.edit({
+                components: [pagedContainer as any, row],
+                flags: MessageFlags.IsComponentsV2 // Keep the flag on edits just in case, though usually purely content update is checking message state? 
+                // Wait, flags are usually on creation, but maybe fine on edit too to Assert V2.
+            });
 
             await interaction.editReply({ content: 'Giveaway created successfully!' });
 

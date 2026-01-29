@@ -22,9 +22,18 @@ const event: Event<'interactionCreate'> = {
                     console.error('Failed to send error message:', err);
                 }
             }
+        } else if (interaction.isAutocomplete()) {
+            const command = client.interactionHandler.commands.get(interaction.commandName);
+            if (!command || !command.autocomplete) return;
+
+            try {
+                await command.autocomplete(client, interaction);
+            } catch (error) {
+                console.error(error);
+            }
         } else if (interaction.isButton()) {
             let button = client.interactionHandler.buttons.get(interaction.customId);
-            
+
             // If no exact match, check for dynamic ID (prefix matching)
             if (!button) {
                 const prefix = interaction.customId.split(':')[0];
