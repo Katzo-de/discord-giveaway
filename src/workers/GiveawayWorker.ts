@@ -1,5 +1,6 @@
 import { Bot } from '../Bot';
 import { endGiveaway } from '../utils/giveawayUtils';
+import { formatDateForMySQL } from '../utils/timeUtils';
 
 export class GiveawayWorker {
     private client: Bot;
@@ -29,7 +30,8 @@ export class GiveawayWorker {
     private async check(): Promise<void> {
         try {
             const db = this.client.database;
-            const now = new Date().toISOString();
+            // Use local time for DB comparison, matching the container's timezone
+            const now = formatDateForMySQL(new Date());
 
             // 1. Check for giveaways that have ended but are not marked as ended
             // SQL: Select giveaways where end_time is in the past AND ended is 0

@@ -70,7 +70,7 @@ export async function endGiveaway(client: Bot, giveawayId: number): Promise<Give
                         .setContent(giveaway.description);
 
                     const infoDisplay = new TextDisplayBuilder()
-                        .setContent(`🏆 **Prize:** ${giveaway.prize}\n👑 **Winner:** ${winnerId ? `<@${winnerId}>` : 'No winners.'}\n👤 **Hosted By:** <@${giveaway.hosted_by}>`);
+                        .setContent(`🏆 **Prize:** ${giveaway.prize}\n👑 **Winner:** ${winnerId ? `<@${winnerId}>` : 'No winners.'}\n👤 **Hosted By:** <@${giveaway.hosted_by}>\n👥 **Participants:** ${entries.length}`);
 
                     const footerDisplay = new TextDisplayBuilder()
                         .setContent(`Ended • ID: ${giveaway.id}`);
@@ -166,4 +166,33 @@ export async function rerollGiveaway(client: Bot, giveawayId: number): Promise<G
         console.error('Error rerolling giveaway:', error);
         return { success: false, message: 'An error occurred while rerolling the giveaway.' };
     }
+}
+
+export function createGiveawayContainer(
+    title: string,
+    description: string,
+    prize: string,
+    endTime: Date,
+    hostedByUserId: string,
+    participantCount: number,
+    giveawayId?: number | string
+): ContainerBuilder {
+    const container = new ContainerBuilder();
+
+    const titleDisplay = new TextDisplayBuilder()
+        .setContent(`# 🎉 ${title} 🎉`);
+
+    const descDisplay = new TextDisplayBuilder()
+        .setContent(description);
+
+    const infoDisplay = new TextDisplayBuilder()
+        .setContent(`🏆 **Prize:** ${prize}\n⏰ **Ends:** <t:${Math.floor(endTime.getTime() / 1000)}:R>\n👤 **Hosted By:** <@${hostedByUserId}>\n👥 **Participants:** ${participantCount}`);
+
+    const footerText = giveawayId ? `Ends at • ID: ${giveawayId}` : `Ends at • ID: (Pending)`;
+    const footerDisplay = new TextDisplayBuilder()
+        .setContent(footerText);
+
+    container.addTextDisplayComponents(titleDisplay, descDisplay, infoDisplay, footerDisplay);
+
+    return container;
 }

@@ -2,6 +2,7 @@ import { Modal } from '../../interface/Component';
 import { Bot } from '../../Bot';
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, ModalSubmitInteraction, ContainerBuilder, TextDisplayBuilder } from 'discord.js';
 import { parseDuration, parseDate } from '../../utils/timeUtils';
+import { createGiveawayContainer } from '../../utils/giveawayUtils';
 
 const modal: Modal = {
     customId: 'giveaway_create',
@@ -55,21 +56,8 @@ const modal: Modal = {
 
         try {
             // New Container Structure
-            const container = new ContainerBuilder();
-
-            const titleDisplay = new TextDisplayBuilder()
-                .setContent(`# 🎉 ${title} 🎉`);
-
-            const descDisplay = new TextDisplayBuilder()
-                .setContent(description);
-
-            const infoDisplay = new TextDisplayBuilder()
-                .setContent(`🏆 **Prize:** ${prize}\n⏰ **Ends:** <t:${Math.floor(endTime.getTime() / 1000)}:R>\n👤 **Hosted By:** ${interaction.user.toString()}`);
-
-            const footerDisplay = new TextDisplayBuilder()
-                .setContent(`Ends at • ID: (Pending)`); // will update
-
-            container.addTextDisplayComponents(titleDisplay, descDisplay, infoDisplay, footerDisplay);
+            // New Container Structure
+            const container = createGiveawayContainer(title, description, prize, endTime, interaction.user.id, 0);
 
             if (!interaction.channel || !interaction.channel.isSendable()) {
                 await interaction.editReply({ content: 'Cannot send messages in this channel.' });
@@ -91,7 +79,7 @@ const modal: Modal = {
             // Use 'execute' for INSERT
             await db.execute(
                 `INSERT INTO giveaways (message_id, channel_id, guild_id, title, description, prize, end_time, hosted_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-                [sentMessage.id, interaction.channelId, interaction.guildId, title, description, prize, endTime.toISOString(), interaction.user.id]
+                [sentMessage.id, interaction.channelId, interaction.guildId, title, description, prize, endTime, interaction.user.id]
             );
 
             // Use 'query' to fetch ID
@@ -122,12 +110,11 @@ const modal: Modal = {
                 .addComponents(joinButton, endButton, rerollButton);
 
             // Update footer with ID
-            footerDisplay.setContent(`Ends at • ID: ${giveaway.id}`);
+            // footerDisplay.setContent(`Ends at • ID: ${giveaway.id}`); // Old way
 
             // Rebuild container components? Or just modify object? Builders are mutable usually? 
             // Ideally clear and add again or just creating new container
-            const pagedContainer = new ContainerBuilder()
-                .addTextDisplayComponents(titleDisplay, descDisplay, infoDisplay, footerDisplay);
+            const pagedContainer = createGiveawayContainer(title, description, prize, endTime, interaction.user.id, 0, giveaway.id);
 
             await sentMessage.edit({
                 components: [pagedContainer as any, row],

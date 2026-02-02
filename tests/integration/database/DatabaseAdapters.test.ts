@@ -20,11 +20,11 @@ describe('Database Integration Tests', () => {
     // Based on IDatabase, there is no connect() method required.
     // If specific adapters need it, it should be in the interface or handled by factory.
     // Assuming for now it's implicit or not needed for the interface contract.
-    
+
     // Initialize schema
     const schemaPath = path.join(__dirname, '../../../src/database/schema.sqlite.sql');
     const schema = fs.readFileSync(schemaPath, 'utf8');
-     const queries = schema.split(';').filter((query) => query.trim().length > 0);
+    const queries = schema.split(';').filter((query) => query.trim().length > 0);
 
     for (const query of queries) {
       await db.execute(query);
@@ -47,14 +47,16 @@ describe('Database Integration Tests', () => {
       winners: 1,
       end_time: '2025-12-31 23:59:59',
       hosted_by: 'User1',
-      ended: false
+      ended: false,
+      title: 'Test Title',
+      description: 'Test Description'
     };
 
     const insertQuery = `
-      INSERT INTO giveaways (message_id, channel_id, guild_id, prize, winners, end_time, hosted_by, ended)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO giveaways (message_id, channel_id, guild_id, prize, winners, end_time, hosted_by, ended, title, description)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    
+
     await db.execute(insertQuery, [
       giveaway.message_id,
       giveaway.channel_id,
@@ -63,7 +65,9 @@ describe('Database Integration Tests', () => {
       giveaway.winners,
       giveaway.end_time,
       giveaway.hosted_by,
-      giveaway.ended ? 1 : 0
+      giveaway.ended ? 1 : 0,
+      giveaway.title,
+      giveaway.description
     ]);
 
     const selectQuery = 'SELECT * FROM giveaways WHERE message_id = ?';

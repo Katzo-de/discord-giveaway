@@ -21,3 +21,9 @@ CREATE TABLE IF NOT EXISTS giveaway_entries (
     FOREIGN KEY (giveaway_id) REFERENCES giveaways(id) ON DELETE CASCADE,
     UNIQUE (giveaway_id, user_id)
 );
+
+CREATE TABLE IF NOT EXISTS guild_settings (
+    guild_id TEXT PRIMARY KEY,
+    language TEXT NOT NULL DEFAULT 'en',
+    manager_role_id TEXT
+);
