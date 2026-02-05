@@ -15,7 +15,7 @@ COPY src ./src
 RUN npm run build
 
 # Copy SQL schema files to dist
-RUN cp src/database/*.sql dist/database/
+RUN cp src/infrastructure/database/*.sql dist/infrastructure/database/
 
 # Prune dev dependencies to prepare for production copy
 RUN npm prune --production

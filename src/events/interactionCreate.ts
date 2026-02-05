@@ -75,7 +75,14 @@ const event: Event<'interactionCreate'> = {
                 }
             }
         } else if (interaction.isStringSelectMenu()) {
-            const menu = client.interactionHandler.selectMenus.get(interaction.customId);
+            let menu = client.interactionHandler.selectMenus.get(interaction.customId);
+
+            // If no exact match, check for dynamic ID (prefix matching)
+            if (!menu) {
+                const prefix = interaction.customId.split(':')[0];
+                menu = client.interactionHandler.selectMenus.get(prefix);
+            }
+
             if (!menu) return;
 
             try {

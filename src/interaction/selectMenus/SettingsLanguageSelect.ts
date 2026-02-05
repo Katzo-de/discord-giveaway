@@ -2,6 +2,7 @@ import { SelectMenu } from '../../interface/Component';
 import { Bot } from '../../Bot';
 import { StringSelectMenuInteraction, MessageFlags } from 'discord.js';
 import { getTranslation } from '../../utils/languageUtils';
+import { settingsService } from '../../container';
 
 const selectMenu: SelectMenu = {
     customId: 'settings_language',
@@ -9,7 +10,7 @@ const selectMenu: SelectMenu = {
         const language = interaction.values[0];
         const guildId = interaction.guildId!;
 
-        await client.database.setGuildSettings(guildId, { language });
+        await settingsService.updateSettings(guildId, { language });
 
         const lang = language; // New language
         await interaction.reply({

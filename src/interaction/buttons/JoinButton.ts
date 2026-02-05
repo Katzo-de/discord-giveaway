@@ -1,7 +1,8 @@
 import { Button } from '../../interface/Component';
 import { Bot } from '../../Bot';
-import { MessageFlags, ButtonInteraction, ContainerBuilder, TextDisplayBuilder } from 'discord.js';
+import { MessageFlags, ButtonInteraction, ContainerBuilder, TextDisplayBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { createGiveawayContainer } from '../../utils/giveawayUtils';
+import { giveawayService } from '../../container';
 
 const button: Button = {
     customId: 'join_giveaway',
@@ -11,50 +12,45 @@ const button: Button = {
             await interaction.reply({ content: 'Invalid button interaction.', flags: MessageFlags.Ephemeral });
             return;
         }
-        const giveawayId = parts[1];
+        const giveawayIdStr = parts[1]; // Wait, giveawayId is number in DB/Service? Button logic treating it as string earlier?
+        // Step 318 view shows: "const giveawayId = parts[1];"
+        // But DB queries used it. DB ID is INTEGER typically.
+        // I should parse it.
+        const giveawayId = parseInt(giveawayIdStr);
+        if (isNaN(giveawayId)) {
+            await interaction.reply({ content: 'Invalid giveaway ID.', flags: MessageFlags.Ephemeral });
+            return;
+        }
+
         const userId = interaction.user.id;
 
         try {
-            const rows = await client.database.query('SELECT ended FROM giveaways WHERE id = ?', [giveawayId]);
-            const giveaway = rows && rows[0];
-
-            if (!giveaway) {
-                await interaction.reply({ content: 'Giveaway not found.', flags: MessageFlags.Ephemeral });
-                return;
+            // Join via service
+            let success: boolean = false;
+            try {
+                success = await giveawayService.joinGiveaway(giveawayId, userId);
+            } catch (error: any) {
+                if (error.message === 'Giveaway not found') {
+                    await interaction.reply({ content: 'Giveaway not found.', flags: MessageFlags.Ephemeral });
+                    return;
+                }
+                if (error.message === 'Giveaway has ended') {
+                    await interaction.reply({ content: 'This giveaway has already ended!', flags: MessageFlags.Ephemeral });
+                    return;
+                }
+                throw error;
             }
-            if (giveaway.ended) {
-                await interaction.reply({ content: 'This giveaway has already ended!', flags: MessageFlags.Ephemeral });
-                return;
-            }
 
-            const entryRows = await client.database.query(
-                'SELECT id FROM giveaway_entries WHERE giveaway_id = ? AND user_id = ?',
-                [giveawayId, userId]
-            );
-            const existingEntry = entryRows && entryRows[0];
-
-            if (existingEntry) {
+            if (!success) {
                 await interaction.reply({ content: 'You have already joined this giveaway!', flags: MessageFlags.Ephemeral });
                 return;
             }
 
-            await client.database.execute(
-                'INSERT INTO giveaway_entries (giveaway_id, user_id) VALUES (?, ?)',
-                [giveawayId, userId]
-            );
-
             // Fetch new participant count
-            const countRows = await client.database.query(
-                'SELECT COUNT(*) as count FROM giveaway_entries WHERE giveaway_id = ?',
-                [giveawayId]
-            );
-            const participantCount = countRows ? (countRows[0] as any).count : 0;
+            const participantCount = await giveawayService.getEntryCount(giveawayId);
 
             // Fetch all giveaway details to rebuild the message
-            // We already have 'giveaway' from the earlier check, but let's make sure we have all fields
-            // The earlier select was 'SELECT ended FROM ...'. We need more fields now.
-            const fullGiveawayRows = await client.database.query('SELECT * FROM giveaways WHERE id = ?', [giveawayId]);
-            const fullGiveaway = fullGiveawayRows && fullGiveawayRows[0];
+            const fullGiveaway = await giveawayService.getGiveaway(giveawayId);
 
             if (fullGiveaway) {
                 try {
@@ -83,7 +79,37 @@ const button: Button = {
                 }
             }
 
-            await interaction.reply({ content: '🎉 You have successfully joined the giveaway!', flags: MessageFlags.Ephemeral });
+            let rolePrompt = '';
+            let components: any[] = [];
+
+            if (fullGiveaway && fullGiveaway.ping_role_id) { // Giveaway entity needs ping_role_id?
+                // Step 20 Giveaway interface: "ping_role_id?: string;"?
+                // Let's check Giveaway entity definition in Step 125/133.
+                // Step 125 view says "Defined Domain Entity...".
+                // I should assume it exists or check.
+                // JoinButton previously used it.
+                // Assuming Service returns domain entity matching previous schema.
+                const member = await interaction.guild?.members.fetch(userId).catch(() => null);
+                if (member && !member.roles.cache.has(fullGiveaway.ping_role_id)) {
+                    // Prompt user for role
+                    rolePrompt = `\nWould you like the <@&${fullGiveaway.ping_role_id}> role to be notified of future giveaways?`;
+
+                    const roleButton = new ActionRowBuilder<ButtonBuilder>()
+                        .addComponents(
+                            new ButtonBuilder()
+                                .setCustomId(`giveaway_role:${fullGiveaway.ping_role_id}`)
+                                .setLabel('Yes, give me the role!')
+                                .setStyle(ButtonStyle.Primary)
+                        );
+                    components.push(roleButton);
+                }
+            }
+
+            await interaction.reply({
+                content: `🎉 You have successfully joined the giveaway!${rolePrompt}`,
+                components: components.length > 0 ? components : undefined,
+                flags: MessageFlags.Ephemeral
+            });
 
         } catch (error) {
             console.error(error);

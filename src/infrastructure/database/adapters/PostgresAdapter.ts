@@ -40,12 +40,12 @@ export class PostgresAdapter implements IDatabase {
         await this.pool.end();
     }
 
-    async getGuildSettings(guildId: string): Promise<import('../../interface/GuildSettings').GuildSettings | null> {
+    async getGuildSettings(guildId: string): Promise<import('../../../domain/entities/GuildSettings').GuildSettings | null> {
         const rows = await this.query('SELECT * FROM guild_settings WHERE guild_id = ?', [guildId]);
         return rows.length > 0 ? rows[0] : null;
     }
 
-    async setGuildSettings(guildId: string, settings: Partial<import('../../interface/GuildSettings').GuildSettings>): Promise<void> {
+    async setGuildSettings(guildId: string, settings: Partial<import('../../../domain/entities/GuildSettings').GuildSettings>): Promise<void> {
         const current = await this.getGuildSettings(guildId);
 
         if (current) {
@@ -59,5 +59,31 @@ export class PostgresAdapter implements IDatabase {
 
             await this.query('INSERT INTO guild_settings (guild_id, language, manager_role_id) VALUES (?, ?, ?)', [guildId, language, managerRoleId]);
         }
+    }
+
+    async createTemplate(template: Omit<import('../../../domain/entities/GiveawayTemplate').GiveawayTemplate, 'id' | 'created_at'>): Promise<void> {
+        await this.query(
+            'INSERT INTO giveaway_templates (guild_id, name, title, description, prize, duration) VALUES (?, ?, ?, ?, ?, ?)',
+            [template.guild_id, template.name, template.title, template.description, template.prize, template.duration]
+        );
+    }
+
+    async getTemplates(guildId: string): Promise<import('../../../domain/entities/GiveawayTemplate').GiveawayTemplate[]> {
+        const rows: any = await this.query('SELECT * FROM giveaway_templates WHERE guild_id = ?', [guildId]);
+        return rows;
+    }
+
+    async getTemplate(guildId: string, name: string): Promise<import('../../../domain/entities/GiveawayTemplate').GiveawayTemplate | null> {
+        const rows: any = await this.query('SELECT * FROM giveaway_templates WHERE guild_id = ? AND name = ?', [guildId, name]);
+        return rows.length > 0 ? rows[0] : null;
+    }
+
+    async getTemplateById(id: number): Promise<import('../../../domain/entities/GiveawayTemplate').GiveawayTemplate | null> {
+        const rows: any = await this.query('SELECT * FROM giveaway_templates WHERE id = ?', [id]);
+        return rows.length > 0 ? rows[0] : null;
+    }
+
+    async deleteTemplate(guildId: string, name: string): Promise<void> {
+        await this.query('DELETE FROM giveaway_templates WHERE guild_id = ? AND name = ?', [guildId, name]);
     }
 }

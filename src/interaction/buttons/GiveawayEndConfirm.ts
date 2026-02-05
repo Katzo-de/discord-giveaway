@@ -10,14 +10,14 @@ const button: Button = {
         const giveawayId = parseInt(parts[1], 10);
 
         if (!giveawayId) {
-             await interaction.reply({ content: 'Invalid giveaway ID.', flags: MessageFlags.Ephemeral });
-             return;
+            await interaction.reply({ content: 'Invalid giveaway ID.', flags: MessageFlags.Ephemeral });
+            return;
         }
 
         // We already checked permissions in the previous step. 
         // Technically we should check again implicitly or trust the customId flow (ephemeral to authorized user).
         // Since it's ephemeral, only the user who clicked "End" sees this button.
-        
+
         await interaction.update({ content: 'Ending giveaway...', components: [] });
 
         const result = await endGiveaway(client, giveawayId);
@@ -33,9 +33,9 @@ const button: Button = {
             // The command sends it publicly. 
             // We should send it publicly here too? 
             // BUT `interaction` here is EPHEMERAL. We cannot send public messages easily unless we use `channel.send`.
-            
+
             if (interaction.channel && interaction.channel.isSendable()) {
-                 await interaction.channel.send({ content: result.message, allowedMentions: result.winnerId ? { users: [result.winnerId] } : undefined });
+                await interaction.channel.send({ content: result.message, allowedMentions: result.winnerIds ? { users: result.winnerIds } : undefined });
             }
 
         } else {

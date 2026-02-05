@@ -2,14 +2,12 @@ import { Client, GatewayIntentBits } from 'discord.js';
 import { InteractionHandler } from './handlers/InteractionHandler';
 import { EventHandler } from './handlers/EventHandler';
 
-import { IDatabase } from './database/interfaces/IDatabase';
-import { DatabaseFactory } from './database/DatabaseFactory';
 import { GiveawayWorker } from './workers/GiveawayWorker';
 
 export class Bot extends Client {
     public interactionHandler: InteractionHandler;
     public eventHandler: EventHandler;
-    public database: IDatabase;
+    // public database: IDatabase; // Removed
     public giveawayWorker: GiveawayWorker;
 
     constructor() {
@@ -22,7 +20,7 @@ export class Bot extends Client {
 
         this.interactionHandler = new InteractionHandler(this);
         this.eventHandler = new EventHandler(this);
-        this.database = DatabaseFactory.createDatabase();
+        // this.database removed. Use Services via Dependency Injection container.
         this.giveawayWorker = new GiveawayWorker(this);
     }
 

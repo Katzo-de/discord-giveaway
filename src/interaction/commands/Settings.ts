@@ -1,7 +1,8 @@
-import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, RoleSelectMenuBuilder, MessageFlags, StringSelectMenuOptionBuilder, ContainerBuilder, TextDisplayBuilder } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, RoleSelectMenuBuilder, MessageFlags, StringSelectMenuOptionBuilder, ContainerBuilder, TextDisplayBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { Command } from '../../interface/Command';
 import { Bot } from '../../Bot';
 import { getTranslation } from '../../utils/languageUtils';
+import { settingsService } from '../../container';
 
 const command: Command = {
     data: new SlashCommandBuilder()
@@ -17,7 +18,7 @@ const command: Command = {
         }
 
         // Get current settings
-        const settings = await client.database.getGuildSettings(interaction.guildId);
+        const settings = await settingsService.getSettings(interaction.guildId);
         const lang = settings?.language || 'en';
 
         const container = new ContainerBuilder();
@@ -59,9 +60,20 @@ const command: Command = {
         const row1 = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(languageSelect);
         const row2 = new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(roleSelect);
 
+        const templateButtons = new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+                .setCustomId('template_create_btn')
+                .setLabel('Create Template')
+                .setStyle(ButtonStyle.Success),
+            new ButtonBuilder()
+                .setCustomId('template_delete_btn')
+                .setLabel('Delete Template')
+                .setStyle(ButtonStyle.Danger)
+        );
+
         // Cast container to any because TypeScript might not fully recognize it as a valid APIActionRowComponent yet in this environment
         await interaction.reply({
-            components: [container as any, row1, row2],
+            components: [container as any, row1, row2, templateButtons],
             flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
         });
     }

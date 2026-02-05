@@ -1,6 +1,6 @@
 import { Bot } from '../Bot';
 import { endGiveaway } from '../utils/giveawayUtils';
-import { formatDateForMySQL } from '../utils/timeUtils';
+import { giveawayService } from '../container';
 
 export class GiveawayWorker {
     private client: Bot;
@@ -29,22 +29,15 @@ export class GiveawayWorker {
 
     private async check(): Promise<void> {
         try {
-            const db = this.client.database;
-            // Use local time for DB comparison, matching the container's timezone
-            const now = formatDateForMySQL(new Date());
-
             // 1. Check for giveaways that have ended but are not marked as ended
-            // SQL: Select giveaways where end_time is in the past AND ended is 0
-            const endedGiveaways = await db.query(
-                'SELECT id FROM giveaways WHERE end_time <= ? AND ended = 0',
-                [now]
-            );
+            // Service handles date logic
+            const endedGiveaways = await giveawayService.getEndedGiveaways();
 
             if (endedGiveaways && endedGiveaways.length > 0) {
                 console.log(`GiveawayWorker: Found ${endedGiveaways.length} giveaways to end.`);
 
-                for (const row of endedGiveaways) {
-                    await endGiveaway(this.client, row.id);
+                for (const giveaway of endedGiveaways) {
+                    await endGiveaway(this.client, giveaway.id);
                 }
             }
 

@@ -3,6 +3,7 @@ import { Bot } from '../../Bot';
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, ModalSubmitInteraction, ContainerBuilder, TextDisplayBuilder } from 'discord.js';
 import { parseDuration, parseDate } from '../../utils/timeUtils';
 import { createGiveawayContainer } from '../../utils/giveawayUtils';
+import { giveawayService } from '../../container';
 
 const modal: Modal = {
     customId: 'giveaway_create',
@@ -40,14 +41,7 @@ const modal: Modal = {
             return;
         }
 
-        // Check if date is in the past (extra safety, though parseDate infers next year usually only if exact match or simple comparison)
-        // parseDate already handles "if in past, move to next year" logic for the specific day/month.
-        // But if user gives a time shortly in the past for TODAY, parseDate might have returned today's date but earlier time?
-        // Let's check:
-        // parseDate logic: "If the constructed date is in the past, assume it's meant for next year"
-        // So it should be safe. But let's verify if 'now' check is strictly > now.
         if (endTime.getTime() <= Date.now()) {
-            // In rare edge case where parseDate didn't catch it or logic is slightly off
             await interaction.reply({ content: 'The end time cannot be in the past!', flags: MessageFlags.Ephemeral });
             return;
         }
@@ -55,78 +49,42 @@ const modal: Modal = {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         try {
-            // New Container Structure
-            // New Container Structure
-            const container = createGiveawayContainer(title, description, prize, endTime, interaction.user.id, 0);
+            // Insert as DRAFT with placeholder message_id
+            const placeholderMessageId = 'DRAFT';
 
-            if (!interaction.channel || !interaction.channel.isSendable()) {
-                await interaction.editReply({ content: 'Cannot send messages in this channel.' });
-                return;
-            }
-
-            const sentMessage = await interaction.channel.send({
-                components: [container as any],
-                flags: MessageFlags.IsComponentsV2
+            const giveaway = await giveawayService.createGiveaway({
+                message_id: placeholderMessageId,
+                channel_id: interaction.channelId!,
+                guild_id: interaction.guildId!,
+                title: title,
+                description: description,
+                prize: prize,
+                end_time: endTime,
+                hosted_by: interaction.user.id,
+                winners: 1 // Default winners
             });
-
-            if (!sentMessage) {
-                await interaction.editReply({ content: 'Failed to send giveaway message.' });
-                return;
-            }
-
-            const db = client.database;
-
-            // Use 'execute' for INSERT
-            await db.execute(
-                `INSERT INTO giveaways (message_id, channel_id, guild_id, title, description, prize, end_time, hosted_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-                [sentMessage.id, interaction.channelId, interaction.guildId, title, description, prize, endTime, interaction.user.id]
-            );
-
-            // Use 'query' to fetch ID
-            const rows = await db.query(`SELECT id FROM giveaways WHERE message_id = ?`, [sentMessage.id]);
-            const giveaway = rows && rows[0];
 
             if (!giveaway) {
-                await interaction.editReply({ content: 'Failed to save giveaway to database.' });
+                await interaction.editReply({ content: 'Failed to save giveaway draft.' });
                 return;
             }
 
-            const joinButton = new ButtonBuilder()
-                .setCustomId(`join_giveaway:${giveaway.id}`)
-                .setLabel('🎉 Join')
-                .setStyle(ButtonStyle.Success);
-
-            const endButton = new ButtonBuilder()
-                .setCustomId(`giveaway_end:${giveaway.id}`)
-                .setLabel('End')
-                .setStyle(ButtonStyle.Danger);
-
-            const rerollButton = new ButtonBuilder()
-                .setCustomId(`giveaway_reroll:${giveaway.id}`)
-                .setLabel('Reroll')
-                .setStyle(ButtonStyle.Secondary);
+            const continueButton = new ButtonBuilder()
+                .setCustomId(`giveaway_continue:${giveaway.id}`)
+                .setLabel('Configure & Publish')
+                .setStyle(ButtonStyle.Primary);
 
             const row = new ActionRowBuilder<ButtonBuilder>()
-                .addComponents(joinButton, endButton, rerollButton);
+                .addComponents(continueButton);
 
-            // Update footer with ID
-            // footerDisplay.setContent(`Ends at • ID: ${giveaway.id}`); // Old way
-
-            // Rebuild container components? Or just modify object? Builders are mutable usually? 
-            // Ideally clear and add again or just creating new container
-            const pagedContainer = createGiveawayContainer(title, description, prize, endTime, interaction.user.id, 0, giveaway.id);
-
-            await sentMessage.edit({
-                components: [pagedContainer as any, row],
-                flags: MessageFlags.IsComponentsV2 // Keep the flag on edits just in case, though usually purely content update is checking message state? 
-                // Wait, flags are usually on creation, but maybe fine on edit too to Assert V2.
+            await interaction.editReply({
+                content: 'Giveaway draft created! Click below to configure winners, roles, and publish it.',
+                components: [row]
             });
-
-            await interaction.editReply({ content: 'Giveaway created successfully!' });
 
         } catch (error) {
             console.error(error);
-            await interaction.editReply({ content: 'An error occurred while creating the giveaway.' });
+            await interaction.editReply({ content: 'An error occurred while creating the giveaway draft.' });
         }
     }
 };

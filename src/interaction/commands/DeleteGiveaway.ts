@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, MessageFlags, PermissionFlagsBits } from 'discord.js';
 import { Command } from '../../interface/Command';
 import { Bot } from '../../Bot';
+import { giveawayService } from '../../container';
 
 const command: Command = {
     data: (new SlashCommandBuilder()
@@ -16,11 +17,8 @@ const command: Command = {
         const giveawayId = interaction.options.getInteger('giveaway_id', true);
 
         try {
-            const db = client.database;
-            
             // Check if giveaway exists
-            const rows = await db.query('SELECT * FROM giveaways WHERE id = ?', [giveawayId]);
-            const giveaway = rows && rows[0];
+            const giveaway = await giveawayService.getGiveaway(giveawayId);
 
             if (!giveaway) {
                 await interaction.reply({ content: `Giveaway with ID ${giveawayId} not found.`, flags: MessageFlags.Ephemeral });
@@ -41,7 +39,9 @@ const command: Command = {
             }
 
             // Delete from database
-            await db.execute('DELETE FROM giveaways WHERE id = ?', [giveawayId]);
+            await giveawayService.deleteGiveaway(giveawayId);
+
+            await interaction.reply({ content: `Giveaway ${giveawayId} has been deleted.`, flags: MessageFlags.Ephemeral });
 
             await interaction.reply({ content: `Giveaway ${giveawayId} has been deleted.`, flags: MessageFlags.Ephemeral });
 

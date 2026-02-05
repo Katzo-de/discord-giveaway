@@ -1,37 +1,19 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, Client, ContainerBuilder, TextDisplayBuilder, MessageFlags } from 'discord.js';
 import { Bot } from '../Bot';
-import { webcrypto } from 'node:crypto';
-
-const crypto = webcrypto;
-
-function shuffle<T>(array: T[]): T[] {
-    const arr = [...array];
-
-    for (let i = arr.length - 1; i > 0; i--) {
-        const rand = new Uint32Array(1);
-        crypto.getRandomValues(rand);
-
-        const j = rand[0] % (i + 1);
-
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-
-    return arr;
-}
+import { giveawayService } from '../container';
 
 export interface GiveawayResult {
     success: boolean;
     message: string;
-    winnerId?: string;
+    winnerIds?: string[];
 }
 
 export async function endGiveaway(client: Bot, giveawayId: number): Promise<GiveawayResult> {
     try {
-        const db = client.database;
-
-        // Fetch giveaway
-        const giveawayRows = await db.query('SELECT * FROM giveaways WHERE id = ?', [giveawayId]);
-        const giveaway = giveawayRows && giveawayRows[0];
+        // Fetch giveaway to check status and get message details
+        // We use service to end it, which handles DB update and winner selection
+        let winners: string[] = [];
+        let giveaway = await giveawayService.getGiveaway(giveawayId);
 
         if (!giveaway) {
             return { success: false, message: `Giveaway with ID ${giveawayId} not found.` };
@@ -41,18 +23,24 @@ export async function endGiveaway(client: Bot, giveawayId: number): Promise<Give
             return { success: false, message: 'This giveaway has already ended.' };
         }
 
-        // Fetch entries
-        const entries = await db.query('SELECT user_id FROM giveaway_entries WHERE giveaway_id = ?', [giveawayId]) as { user_id: string }[];
+        // End the giveaway via service
+        // Service.endGiveaway returns winners
+        winners = await giveawayService.endGiveaway(giveawayId);
 
-        let winnerId: string | null = null;
-        if (entries && entries.length > 0) {
-            const shuffledEntries = shuffle(entries);
-            const winnerEntry = shuffledEntries[0];
-            winnerId = winnerEntry.user_id;
+        // Re-fetch giveaway to ensure we have latest state (though endGiveaway updates passed object in memory? 
+        // Service code: "giveaway.ended = true; await update(giveaway);" 
+        // But our local 'giveaway' var here is a different copy if getGiveaway fetched a new object. 
+        // Service fetches it internally.
+        // So we update our local object state or re-fetch.
+        giveaway.ended = true;
+
+        if (giveaway.message_id === 'DRAFT') {
+            return { success: true, message: 'Draft giveaway ended (cleaned up).' };
         }
 
-        // Mark as ended
-        await db.execute('UPDATE giveaways SET ended = 1 WHERE id = ?', [giveawayId]);
+        // Get entries count for message
+        const entryCount = await giveawayService.getEntryCount(giveawayId);
+        // Note: winners are returned by service endGiveaway which picked them from DB state before update? Yes.
 
         // Update original message
         try {
@@ -69,8 +57,12 @@ export async function endGiveaway(client: Bot, giveawayId: number): Promise<Give
                     const descDisplay = new TextDisplayBuilder()
                         .setContent(giveaway.description);
 
+                    const winnersText = winners.length > 0
+                        ? winners.map(id => `<@${id}>`).join(', ')
+                        : 'No winners.';
+
                     const infoDisplay = new TextDisplayBuilder()
-                        .setContent(`🏆 **Prize:** ${giveaway.prize}\n👑 **Winner:** ${winnerId ? `<@${winnerId}>` : 'No winners.'}\n👤 **Hosted By:** <@${giveaway.hosted_by}>\n👥 **Participants:** ${entries.length}`);
+                        .setContent(`🏆 **Prize:** ${giveaway.prize}\n👑 **Winners:** ${winnersText}\n👤 **Hosted By:** <@${giveaway.hosted_by}>\n👥 **Participants:** ${entryCount}`);
 
                     const footerDisplay = new TextDisplayBuilder()
                         .setContent(`Ended • ID: ${giveaway.id}`);
@@ -94,9 +86,10 @@ export async function endGiveaway(client: Bot, giveawayId: number): Promise<Give
                     });
 
                     // Announce winner as a reply to the giveaway message
-                    if (winnerId) {
+                    if (winners.length > 0) {
+                        const winnersString = winners.map(id => `<@${id}>`).join(', ');
                         await message.reply({
-                            content: `🎉 Congratulations <@${winnerId}>! You won **${giveaway.prize}**! 🎉`
+                            content: `🎉 Congratulations ${winnersString}! You won **${giveaway.prize}**! 🎉`
                         });
                     } else {
                         await message.reply({
@@ -109,8 +102,8 @@ export async function endGiveaway(client: Bot, giveawayId: number): Promise<Give
             console.warn(`Could not update message for giveaway ${giveawayId}:`, err);
         }
 
-        if (winnerId) {
-            return { success: true, message: 'Giveaway ended successfully!', winnerId: winnerId! };
+        if (winners.length > 0) {
+            return { success: true, message: 'Giveaway ended successfully!', winnerIds: winners };
         } else {
             return { success: true, message: 'Giveaway ended (no participants).' };
         }
@@ -123,27 +116,26 @@ export async function endGiveaway(client: Bot, giveawayId: number): Promise<Give
 
 export async function rerollGiveaway(client: Bot, giveawayId: number): Promise<GiveawayResult> {
     try {
-        const db = client.database;
-
-        // Fetch giveaway
-        const giveawayRows = await db.query('SELECT * FROM giveaways WHERE id = ?', [giveawayId]);
-        const giveaway = giveawayRows && giveawayRows[0];
+        const giveaway = await giveawayService.getGiveaway(giveawayId);
 
         if (!giveaway) {
             return { success: false, message: `Giveaway with ID ${giveawayId} not found.` };
         }
 
-        // Fetch entries
-        const entries = await db.query('SELECT user_id FROM giveaway_entries WHERE giveaway_id = ?', [giveawayId]) as { user_id: string }[];
+        // Reroll via service
+        // Service.rerollGiveaway checks if ended, throws if not
+        let winners: string[] = [];
+        try {
+            winners = await giveawayService.rerollGiveaway(giveawayId);
+        } catch (e: any) {
+            return { success: false, message: e.message };
+        }
 
-        let winnerId: string | null = null;
-        if (entries && entries.length > 0) {
-            const shuffledEntries = shuffle(entries);
-            const winnerEntry = shuffledEntries[0];
-            winnerId = winnerEntry.user_id;
-        } else {
+        if (winners.length === 0) {
             return { success: false, message: 'No entries found for this giveaway.' };
         }
+
+        const winnerId = winners[0];
 
         // Fetch and reply to the original message
         try {
@@ -160,7 +152,7 @@ export async function rerollGiveaway(client: Bot, giveawayId: number): Promise<G
             console.warn(`Could not fetch message for giveaway ${giveawayId} during reroll:`, err);
         }
 
-        return { success: true, message: `Rerolled! New winner: <@${winnerId}>`, winnerId: winnerId! };
+        return { success: true, message: `Rerolled! New winner: <@${winnerId}>`, winnerIds: [winnerId] };
 
     } catch (error) {
         console.error('Error rerolling giveaway:', error);
@@ -175,7 +167,8 @@ export function createGiveawayContainer(
     endTime: Date,
     hostedByUserId: string,
     participantCount: number,
-    giveawayId?: number | string
+    giveawayId?: number | string,
+    winnerCount: number = 1
 ): ContainerBuilder {
     const container = new ContainerBuilder();
 
@@ -186,7 +179,7 @@ export function createGiveawayContainer(
         .setContent(description);
 
     const infoDisplay = new TextDisplayBuilder()
-        .setContent(`🏆 **Prize:** ${prize}\n⏰ **Ends:** <t:${Math.floor(endTime.getTime() / 1000)}:R>\n👤 **Hosted By:** <@${hostedByUserId}>\n👥 **Participants:** ${participantCount}`);
+        .setContent(`🏆 **Prize:** ${prize}\n⏰ **Ends:** <t:${Math.floor(endTime.getTime() / 1000)}:R>\n👤 **Hosted By:** <@${hostedByUserId}>\n👥 **Participants:** ${participantCount}\n🎫 **Winners:** ${winnerCount}`);
 
     const footerText = giveawayId ? `Ends at • ID: ${giveawayId}` : `Ends at • ID: (Pending)`;
     const footerDisplay = new TextDisplayBuilder()

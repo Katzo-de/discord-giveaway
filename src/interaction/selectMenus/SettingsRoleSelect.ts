@@ -2,6 +2,7 @@ import { SelectMenu } from '../../interface/Component';
 import { Bot } from '../../Bot';
 import { RoleSelectMenuInteraction, MessageFlags } from 'discord.js';
 import { getTranslation } from '../../utils/languageUtils';
+import { settingsService } from '../../container';
 
 const selectMenu: SelectMenu = {
     customId: 'settings_role',
@@ -9,9 +10,9 @@ const selectMenu: SelectMenu = {
         const roleId = interaction.values[0];
         const guildId = interaction.guildId!;
 
-        await client.database.setGuildSettings(guildId, { manager_role_id: roleId });
+        await settingsService.updateSettings(guildId, { manager_role_id: roleId });
 
-        const settings = await client.database.getGuildSettings(guildId);
+        const settings = await settingsService.getSettings(guildId);
         const lang = settings?.language || 'en';
 
         await interaction.reply({

@@ -1,6 +1,6 @@
 import { config } from 'dotenv';
 import { Bot } from './Bot';
-import { initDb } from './database/init';
+import { initDb } from './infrastructure/database/init';
 
 config();
 

@@ -2,6 +2,7 @@ import { SlashCommandBuilder, MessageFlags, PermissionFlagsBits, AutocompleteInt
 import { Command } from '../../interface/Command';
 import { Bot } from '../../Bot';
 import { rerollGiveaway } from '../../utils/giveawayUtils';
+import { giveawayService } from '../../container';
 
 const command: Command = {
     data: (new SlashCommandBuilder()
@@ -22,21 +23,17 @@ const command: Command = {
         const result = await rerollGiveaway(client, giveawayId);
 
         if (result.success) {
-            await interaction.followUp({ content: result.message, allowedMentions: result.winnerId ? { users: [result.winnerId] } : undefined });
+            await interaction.followUp({ content: result.message, allowedMentions: result.winnerIds ? { users: result.winnerIds } : undefined });
         } else {
             await interaction.followUp({ content: result.message, flags: MessageFlags.Ephemeral });
         }
     },
     autocomplete: async (client, interaction) => {
         const focusedValue = interaction.options.getFocused();
-        const db = client.database;
 
         try {
             // Reroll is for ended giveaways
-            const giveaways = await db.query(
-                'SELECT id, title FROM giveaways WHERE ended = 1 AND title LIKE ? LIMIT 25',
-                [`%${focusedValue}%`]
-            ) as { id: number, title: string }[];
+            const giveaways = await giveawayService.search(focusedValue.toString(), true);
 
             const choices = giveaways.map(g => ({ name: `[ID: ${g.id}] ${g.title}`, value: g.id }));
             await interaction.respond(choices);

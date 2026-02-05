@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS giveaways (
     winners INT NOT NULL DEFAULT 1,
     end_time DATETIME NOT NULL,
     hosted_by VARCHAR(255) NOT NULL,
+    ping_role_id VARCHAR(255),
+    giveaway_role_id VARCHAR(255),
     ended BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -22,8 +24,21 @@ CREATE TABLE IF NOT EXISTS giveaway_entries (
     UNIQUE KEY unique_entry (giveaway_id, user_id)
 );
 
+
 CREATE TABLE IF NOT EXISTS guild_settings (
     guild_id VARCHAR(255) PRIMARY KEY,
     language VARCHAR(10) NOT NULL DEFAULT 'en',
     manager_role_id VARCHAR(255)
+);
+
+CREATE TABLE IF NOT EXISTS giveaway_templates (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    guild_id VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    prize VARCHAR(255) NOT NULL,
+    duration VARCHAR(255), -- Optional: store duration string (e.g. 1h, 30m)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_template_name (guild_id, name)
 );
