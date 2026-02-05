@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { DatabaseFactory } from '../../../src/database/DatabaseFactory';
-import { IDatabase } from '../../../src/database/interfaces/IDatabase';
+import { DatabaseFactory } from '../../../src/infrastructure/database/DatabaseFactory';
+import { IDatabase } from '../../../src/infrastructure/database/interfaces/IDatabase';
 import fs from 'fs';
 import path from 'path';
 
@@ -22,7 +22,7 @@ describe('Database Integration Tests', () => {
     // Assuming for now it's implicit or not needed for the interface contract.
 
     // Initialize schema
-    const schemaPath = path.join(__dirname, '../../../src/database/schema.sqlite.sql');
+    const schemaPath = path.join(__dirname, '../../../src/infrastructure/database/schema.sqlite.sql');
     const schema = fs.readFileSync(schemaPath, 'utf8');
     const queries = schema.split(';').filter((query) => query.trim().length > 0);
 
