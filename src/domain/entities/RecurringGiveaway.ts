@@ -5,6 +5,7 @@ export interface RecurringGiveaway {
     channel_id: string;
     interval_ms: number;
     winners_count: number;
+    hosted_by: string;
     ping_role_id?: string;
     last_run_at?: Date;
     active: boolean;

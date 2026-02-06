@@ -75,7 +75,7 @@ export class RecurringGiveawayService {
             prize: template.prize,
             winners: recurring.winners_count,
             end_time: endTime,
-            hosted_by: client.user?.id || 'Bot', // Or maybe we should store who scheduled it? For now assume Bot.
+            hosted_by: recurring.hosted_by,
             ping_role_id: recurring.ping_role_id
         });
 
@@ -95,7 +95,7 @@ export class RecurringGiveawayService {
                     giveaway.description,
                     giveaway.prize,
                     giveaway.end_time,
-                    giveaway.hosted_by, // Hosted by bot effectively
+                    giveaway.hosted_by,
                     0, // 0 participants
                     giveaway.id,
                     giveaway.winners

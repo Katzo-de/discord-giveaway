@@ -39,7 +39,8 @@ const modal: Modal = {
                 template_id: templateId,
                 channel_id: interaction.channelId,
                 interval_ms: intervalMs,
-                winners_count: winners
+                winners_count: winners,
+                hosted_by: interaction.user.id
             });
 
             await interaction.reply({ content: `Recurring giveaway scheduled! Interval: ${intervalStr}, Winners: ${winners}.`, ephemeral: true });

@@ -15,6 +15,7 @@ export class DbRecurringGiveawayRepository implements IRecurringGiveawayReposito
                 channel_id: data.channel_id,
                 interval_ms: data.interval_ms,
                 winners_count: data.winners_count,
+                hosted_by: data.hosted_by,
                 ping_role_id: data.ping_role_id || null,
                 last_run_at: data.last_run_at ? data.last_run_at.toISOString().slice(0, 19).replace('T', ' ') : null,
                 active: data.active ? 1 : 0
@@ -60,6 +61,7 @@ export class DbRecurringGiveawayRepository implements IRecurringGiveawayReposito
                 channel_id: recurring.channel_id,
                 interval_ms: recurring.interval_ms,
                 winners_count: recurring.winners_count,
+                hosted_by: recurring.hosted_by,
                 ping_role_id: recurring.ping_role_id || null,
                 last_run_at: recurring.last_run_at ? recurring.last_run_at.toISOString().slice(0, 19).replace('T', ' ') : null,
                 active: recurring.active ? 1 : 0

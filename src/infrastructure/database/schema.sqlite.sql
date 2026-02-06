@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS recurring_giveaways (
     channel_id TEXT NOT NULL,
     interval_ms INTEGER NOT NULL,
     winners_count INTEGER NOT NULL DEFAULT 1,
+    hosted_by TEXT NOT NULL DEFAULT 'Bot',
     ping_role_id TEXT,
     last_run_at TEXT,
     active INTEGER NOT NULL DEFAULT 1,

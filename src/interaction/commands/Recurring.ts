@@ -59,6 +59,7 @@ const command: Command = {
                 channel_id: channel.id,
                 interval_ms: intervalMs,
                 winners_count: winners,
+                hosted_by: interaction.user.id,
                 ping_role_id: pingRole?.id || template.prize || undefined // Hacky fallback? No, template doesn't have role.
             });
 
