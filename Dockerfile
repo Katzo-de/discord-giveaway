@@ -1,4 +1,4 @@
-FROM node:18-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /usr/src/app
 
@@ -20,7 +20,7 @@ RUN cp src/infrastructure/database/*.sql dist/infrastructure/database/
 # Prune dev dependencies to prepare for production copy
 RUN npm prune --production
 
-FROM node:18-alpine
+FROM node:22-alpine
 
 WORKDIR /usr/src/app
 
