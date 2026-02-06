@@ -4,6 +4,7 @@ import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlag
 import { parseDuration, parseDate } from '../../utils/timeUtils';
 import { createGiveawayContainer } from '../../utils/giveawayUtils';
 import { giveawayService } from '../../container';
+import { giveawayCache } from '../../utils/GiveawayCache';
 
 const modal: Modal = {
     customId: 'giveaway_create',
@@ -49,28 +50,20 @@ const modal: Modal = {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         try {
-            // Insert as DRAFT with placeholder message_id
-            const placeholderMessageId = 'DRAFT';
-
-            const giveaway = await giveawayService.createGiveaway({
-                message_id: placeholderMessageId,
-                channel_id: interaction.channelId!,
-                guild_id: interaction.guildId!,
-                title: title,
-                description: description,
-                prize: prize,
-                end_time: endTime,
-                hosted_by: interaction.user.id,
-                winners: 1 // Default winners
+            // Save to Cache instead of DB
+            const draftId = giveawayCache.save({
+                title,
+                description,
+                prize,
+                endTime,
+                hostedBy: interaction.user.id,
+                channelId: interaction.channelId!,
+                guildId: interaction.guildId!,
+                winners: 1 // Default
             });
 
-            if (!giveaway) {
-                await interaction.editReply({ content: 'Failed to save giveaway draft.' });
-                return;
-            }
-
             const continueButton = new ButtonBuilder()
-                .setCustomId(`giveaway_continue:${giveaway.id}`)
+                .setCustomId(`giveaway_continue:${draftId}`)
                 .setLabel('Configure & Publish')
                 .setStyle(ButtonStyle.Primary);
 
@@ -78,13 +71,13 @@ const modal: Modal = {
                 .addComponents(continueButton);
 
             await interaction.editReply({
-                content: 'Giveaway draft created! Click below to configure winners, roles, and publish it.',
+                content: 'Giveaway draft prepared! Click below to configure winners, roles, and publish it.',
                 components: [row]
             });
 
         } catch (error) {
             console.error(error);
-            await interaction.editReply({ content: 'An error occurred while creating the giveaway draft.' });
+            await interaction.editReply({ content: 'An error occurred while preparing the giveaway draft.' });
         }
     }
 };

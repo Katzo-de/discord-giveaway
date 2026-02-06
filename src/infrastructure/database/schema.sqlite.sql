@@ -41,3 +41,16 @@ CREATE TABLE IF NOT EXISTS giveaway_templates (
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (guild_id, name)
 );
+
+CREATE TABLE IF NOT EXISTS recurring_giveaways (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id TEXT NOT NULL,
+    template_id INTEGER NOT NULL,
+    channel_id TEXT NOT NULL,
+    interval_ms INTEGER NOT NULL,
+    winners_count INTEGER NOT NULL DEFAULT 1,
+    ping_role_id TEXT,
+    last_run_at TEXT,
+    active INTEGER NOT NULL DEFAULT 1,
+    FOREIGN KEY (template_id) REFERENCES giveaway_templates(id) ON DELETE CASCADE
+);

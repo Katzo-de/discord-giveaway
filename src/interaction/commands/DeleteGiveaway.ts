@@ -11,6 +11,7 @@ const command: Command = {
             option.setName('giveaway_id')
                 .setDescription('The ID of the giveaway to delete')
                 .setRequired(true)
+                .setAutocomplete(true)
         ) as SlashCommandBuilder)
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
     execute: async (client: Bot, interaction) => {
@@ -48,6 +49,20 @@ const command: Command = {
         } catch (error) {
             console.error(error);
             await interaction.reply({ content: 'An error occurred while deleting the giveaway.', flags: MessageFlags.Ephemeral });
+        }
+    },
+    autocomplete: async (client, interaction) => {
+        const focusedValue = interaction.options.getFocused();
+
+        try {
+            // Delete is for ended giveaways
+            const giveaways = await giveawayService.search(focusedValue.toString(), true);
+
+            const choices = giveaways.map(g => ({ name: `[ID: ${g.id}] ${g.title}`, value: g.id }));
+            await interaction.respond(choices);
+        } catch (error) {
+            console.error('Autocomplete error in gdelete:', error);
+            await interaction.respond([]);
         }
     }
 };

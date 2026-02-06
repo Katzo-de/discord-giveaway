@@ -32,4 +32,11 @@ export class Bot extends Client {
 
         this.giveawayWorker.start();
     }
+
+    public async stop(): Promise<void> {
+        console.log('Stopping bot...');
+        this.giveawayWorker.stop();
+        await this.destroy();
+        console.log('Bot stopped.');
+    }
 }

@@ -3,7 +3,7 @@ import { GiveawayTemplate } from '../../../domain/entities/GiveawayTemplate';
 import { IDatabase } from '../../database/interfaces/IDatabase';
 import { QueryBuilder } from '../../database/QueryBuilder';
 
-export class SqliteTemplateRepository implements ITemplateRepository {
+export class DbTemplateRepository implements ITemplateRepository {
     constructor(private readonly db: IDatabase) { }
 
     async create(template: Omit<GiveawayTemplate, 'id' | 'created_at'>): Promise<void> {

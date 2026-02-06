@@ -1,6 +1,6 @@
 import { Button } from '../../interface/Component';
 import { Bot } from '../../Bot';
-import { ButtonInteraction, MessageFlags, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from 'discord.js';
+import { ButtonInteraction, MessageFlags, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, RoleSelectMenuBuilder } from 'discord.js';
 import { giveawayService } from '../../container';
 
 const button: Button = {
@@ -33,20 +33,22 @@ const button: Button = {
                 .setValue(giveaway.winners ? giveaway.winners.toString() : '1')
                 .setRequired(false);
 
-            const roleInput = new TextInputBuilder()
+            const roleSelect = new RoleSelectMenuBuilder()
                 .setCustomId('ping_role')
-                .setLabel("Ping Role ID (or 'create' for new)")
-                .setStyle(TextInputStyle.Short)
-                .setValue(giveaway.ping_role_id || '')
-                .setPlaceholder('Role ID or "create"')
-                .setRequired(false);
+                .setPlaceholder('Select a role to ping (optional)')
+                .setMinValues(0)
+                .setMaxValues(1);
+
+            if (giveaway.ping_role_id) {
+                roleSelect.setDefaultRoles([giveaway.ping_role_id]);
+            }
 
             const rowsComponents = [
                 new ActionRowBuilder<TextInputBuilder>().addComponents(winnersInput),
-                new ActionRowBuilder<TextInputBuilder>().addComponents(roleInput)
+                new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(roleSelect)
             ];
 
-            modal.addComponents(...rowsComponents);
+            modal.addComponents(...rowsComponents as any);
 
             await interaction.showModal(modal);
 

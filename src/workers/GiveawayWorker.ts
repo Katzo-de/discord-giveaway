@@ -1,6 +1,6 @@
 import { Bot } from '../Bot';
 import { endGiveaway } from '../utils/giveawayUtils';
-import { giveawayService } from '../container';
+import { giveawayService, recurringService } from '../container';
 
 export class GiveawayWorker {
     private client: Bot;
@@ -41,10 +41,9 @@ export class GiveawayWorker {
                 }
             }
 
-            // 2. Optional: Check for giveaways that are lingering or invalid/deleted if needed.
-            // For now, the primary "removal" logic is just ending them.
-            // If the user wants to DELETE rows for giveaways that are very old, we can add that here.
-            // Example: DELETE FROM giveaways WHERE ended = 1 AND end_time < (now - 30 days)
+            // 2. Check for recurring giveaways
+            // We need to import recurringService. It is lazy imported at top usually, but let's check imports.
+            await recurringService.processDueGiveaways(this.client);
 
         } catch (error) {
             console.error('GiveawayWorker Error:', error);

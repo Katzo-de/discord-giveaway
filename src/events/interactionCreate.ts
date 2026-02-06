@@ -74,7 +74,7 @@ const event: Event<'interactionCreate'> = {
                     console.error('Failed to send error message:', err);
                 }
             }
-        } else if (interaction.isStringSelectMenu()) {
+        } else if (interaction.isAnySelectMenu()) {
             let menu = client.interactionHandler.selectMenus.get(interaction.customId);
 
             // If no exact match, check for dynamic ID (prefix matching)

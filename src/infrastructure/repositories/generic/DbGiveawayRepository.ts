@@ -3,7 +3,7 @@ import { Giveaway } from '../../../domain/entities/Giveaway';
 import { IDatabase } from '../../database/interfaces/IDatabase';
 import { QueryBuilder } from '../../database/QueryBuilder';
 
-export class SqliteGiveawayRepository implements IGiveawayRepository {
+export class DbGiveawayRepository implements IGiveawayRepository {
     constructor(private readonly db: IDatabase) { }
 
     async create(giveaway: Omit<Giveaway, 'id' | 'created_at' | 'ended'>): Promise<Giveaway> {
@@ -19,6 +19,7 @@ export class SqliteGiveawayRepository implements IGiveawayRepository {
                 winners: giveaway.winners,
                 end_time: giveaway.end_time.toISOString().slice(0, 19).replace('T', ' '),
                 hosted_by: giveaway.hosted_by,
+                ping_role_id: giveaway.ping_role_id ?? null,
                 ended: 0
             })
             .build();
@@ -76,13 +77,28 @@ export class SqliteGiveawayRepository implements IGiveawayRepository {
     }
 
     async update(giveaway: Giveaway): Promise<void> {
-        const { sql, params } = new QueryBuilder() // This line might have error if using old QueryBuilder def? Looks OK.
+        console.log(`[Repo] Updating giveaway ${giveaway.id} with message_id=${giveaway.message_id}`);
+        const { sql, params } = new QueryBuilder()
             .table('giveaways')
             .update({
+                message_id: giveaway.message_id,
+                channel_id: giveaway.channel_id,
+                guild_id: giveaway.guild_id,
+                title: giveaway.title,
+                description: giveaway.description,
+                prize: giveaway.prize,
+                winners: giveaway.winners,
+                end_time: giveaway.end_time.toISOString().slice(0, 19).replace('T', ' '),
+                hosted_by: giveaway.hosted_by,
+                ping_role_id: giveaway.ping_role_id ?? null,
                 ended: giveaway.ended ? 1 : 0
             })
             .where('id', '=', giveaway.id)
             .build();
+
+        console.log(`[Repo] SQL: ${sql}`);
+        console.log(`[Repo] Params: ${JSON.stringify(params)}`);
+
         await this.db.execute(sql, params);
     }
 

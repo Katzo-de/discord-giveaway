@@ -1,38 +1,61 @@
 
 import { Button } from '../../interface/Component';
 import { Bot } from '../../Bot';
-import { ButtonInteraction, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { ButtonInteraction, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle, ContainerBuilder, TextDisplayBuilder } from 'discord.js';
 import { createGiveawayContainer } from '../../utils/giveawayUtils';
 import { giveawayService } from '../../container';
+import { giveawayCache } from '../../utils/GiveawayCache';
 
 const button: Button = {
     customId: 'giveaway_confirm',
     execute: async (client: Bot, interaction: ButtonInteraction) => {
-        const parts = interaction.customId.split(':');
-        const giveawayId = parseInt(parts[1]);
+        // Defer update immediately to prevent timeout or race conditions
+        await interaction.deferUpdate();
 
-        if (isNaN(giveawayId)) {
-            await interaction.reply({ content: 'Invalid giveaway ID.', flags: MessageFlags.Ephemeral });
+        const parts = interaction.customId.split(':');
+        const draftId = parts[1]; // UUID
+
+        if (!draftId) {
+            await interaction.followUp({ content: 'Invalid giveaway session.', flags: MessageFlags.Ephemeral });
             return;
         }
 
         try {
-            // Fetch giveaway
-            const giveaway = await giveawayService.getGiveaway(giveawayId);
+            // Fetch keys from Cache
+            const draft = giveawayCache.get(draftId);
 
-            if (!giveaway) {
-                await interaction.reply({ content: 'Giveaway not found.', flags: MessageFlags.Ephemeral });
+            if (!draft) {
+                await interaction.followUp({ content: 'Giveaway session expired. Please start over.', flags: MessageFlags.Ephemeral });
                 return;
             }
 
             // Get channel
-            const channel = await client.channels.fetch(giveaway.channel_id);
+            const channel = await client.channels.fetch(draft.channelId);
             if (!channel || !channel.isSendable()) {
-                await interaction.reply({ content: 'Channel not found or bot cannot send messages.', flags: MessageFlags.Ephemeral });
+                await interaction.followUp({ content: 'Channel not found or bot cannot send messages.', flags: MessageFlags.Ephemeral });
                 return;
             }
 
-            // Create Container
+            // Create REAL Giveaway in Database
+            const giveaway = await giveawayService.createGiveaway({
+                message_id: 'PENDING', // Will update below
+                channel_id: draft.channelId,
+                guild_id: draft.guildId,
+                title: draft.title,
+                description: draft.description,
+                prize: draft.prize,
+                end_time: draft.endTime,
+                hosted_by: draft.hostedBy,
+                winners: draft.winners || 1,
+                ping_role_id: draft.pingRoleId
+            });
+
+            if (!giveaway) {
+                await interaction.followUp({ content: 'Failed to create giveaway in database.', flags: MessageFlags.Ephemeral });
+                return;
+            }
+
+            // Create Container with REAL ID
             const container = createGiveawayContainer(
                 giveaway.title,
                 giveaway.description,
@@ -41,7 +64,7 @@ const button: Button = {
                 giveaway.hosted_by,
                 0,
                 giveaway.id,
-                giveaway.winners
+                giveaway.winners || 1
             );
 
             // Buttons
@@ -63,32 +86,40 @@ const button: Button = {
             const row = new ActionRowBuilder<ButtonBuilder>()
                 .addComponents(joinButton, endButton, rerollButton);
 
-            let content = '';
+            // Publish Message
             if (giveaway.ping_role_id) {
-                content = `<@&${giveaway.ping_role_id}>`;
+                await channel.send({
+                    content: `<@&${giveaway.ping_role_id}>`
+                });
             }
 
-            // Publish Message
             const sentMessage = await channel.send({
-                content: content || undefined,
                 components: [container as any, row],
                 flags: MessageFlags.IsComponentsV2
             });
 
-            // Update Message ID and set ended = 0 (Active)
+            // Update Message ID
+            console.log(`[Confirm] Giveaway ${giveaway.id} published. Message ID: ${sentMessage.id}`);
             giveaway.message_id = sentMessage.id;
-            giveaway.ended = false;
             await giveawayService.updateGiveaway(giveaway);
 
-            await interaction.update({ content: 'Giveaway published successfully!', components: [] });
+            // Clear Cache
+            giveawayCache.delete(draftId);
+
+            const successContainer = new ContainerBuilder()
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent('✅ **Giveaway published successfully!**')
+                );
+
+            await interaction.editReply({
+                content: null,
+                embeds: [],
+                components: [successContainer as any]
+            });
 
         } catch (error) {
             console.error('Error confirming giveaway:', error);
-            if (!interaction.replied && !interaction.deferred) {
-                await interaction.reply({ content: 'An error occurred while publishing the giveaway.', flags: MessageFlags.Ephemeral });
-            } else {
-                await interaction.followUp({ content: 'An error occurred while publishing the giveaway.', flags: MessageFlags.Ephemeral });
-            }
+            await interaction.followUp({ content: 'An error occurred while publishing the giveaway.', flags: MessageFlags.Ephemeral });
         }
     }
 };

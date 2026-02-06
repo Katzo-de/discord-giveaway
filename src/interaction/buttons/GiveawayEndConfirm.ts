@@ -23,22 +23,21 @@ const button: Button = {
         const result = await endGiveaway(client, giveawayId);
 
         if (result.success) {
+            console.log(`[GiveawayEndConfirm] Giveaway ${giveawayId} ended successfully. Result:`, result);
             await interaction.followUp({ content: result.message, flags: MessageFlags.Ephemeral });
-            // Should usually announce publicly too? 
-            // The `endGiveaway` function announces publicly by replying to the interaction passed to it? 
-            // Wait, utility returns a message. The command `EndGiveaway.ts` sends it as followUp.
-            // Here we are in an ephemeral context. 
-            // `endGiveaway` updates the original message.
-            // It returns a winner string. 
-            // The command sends it publicly. 
-            // We should send it publicly here too? 
-            // BUT `interaction` here is EPHEMERAL. We cannot send public messages easily unless we use `channel.send`.
 
+            // Try to confirm publicly if possible (redundant if utils handled it, but good for debug)
             if (interaction.channel && interaction.channel.isSendable()) {
-                await interaction.channel.send({ content: result.message, allowedMentions: result.winnerIds ? { users: result.winnerIds } : undefined });
+                /* 
+                 * Note: `endGiveaway` util function already attempts to send the winner announcement.
+                 * We don't need to duplicate it here unless we want a separate confirmation message.
+                 * Leaving this commented out to avoid double keys, but logging is added above.
+                 */
+                // await interaction.channel.send({ content: result.message, allowedMentions: result.winnerIds ? { users: result.winnerIds } : undefined });
             }
 
         } else {
+            console.warn(`[GiveawayEndConfirm] Failed to end giveaway ${giveawayId}. Reason: ${result.message}`);
             await interaction.followUp({ content: result.message, flags: MessageFlags.Ephemeral });
         }
     }

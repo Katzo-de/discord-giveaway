@@ -65,11 +65,31 @@ const button: Button = {
                                 fullGiveaway.end_time,
                                 fullGiveaway.hosted_by,
                                 participantCount,
-                                fullGiveaway.id
+                                fullGiveaway.id,
+                                fullGiveaway.winners
                             );
 
+                            // Reconstruct buttons to ensure consistency
+                            const joinButton = new ButtonBuilder()
+                                .setCustomId(`join_giveaway:${fullGiveaway.id}`)
+                                .setLabel('🎉 Join')
+                                .setStyle(ButtonStyle.Success);
+
+                            const endButton = new ButtonBuilder()
+                                .setCustomId(`giveaway_end:${fullGiveaway.id}`)
+                                .setLabel('End')
+                                .setStyle(ButtonStyle.Danger);
+
+                            const rerollButton = new ButtonBuilder()
+                                .setCustomId(`giveaway_reroll:${fullGiveaway.id}`)
+                                .setLabel('Reroll')
+                                .setStyle(ButtonStyle.Secondary);
+
+                            const row = new ActionRowBuilder<ButtonBuilder>()
+                                .addComponents(joinButton, endButton, rerollButton);
+
                             await message.edit({
-                                components: [container as any, ...message.components.slice(1)], // Keep buttons (row 1+)
+                                components: [container as any, row],
                                 flags: MessageFlags.IsComponentsV2
                             });
                         }

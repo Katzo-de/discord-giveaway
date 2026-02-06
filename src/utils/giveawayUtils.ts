@@ -44,9 +44,17 @@ export async function endGiveaway(client: Bot, giveawayId: number): Promise<Give
 
         // Update original message
         try {
-            const channel = await client.channels.fetch(giveaway.channel_id);
-            if (channel && channel.isSendable()) {
-                const message = await channel.messages.fetch(giveaway.message_id).catch(() => null);
+            const channel = await client.channels.fetch(giveaway.channel_id).catch(e => {
+                console.error(`[GiveawayEnd] Failed to fetch channel ${giveaway.channel_id}:`, e);
+                return null;
+            });
+
+            if (channel && (channel.isSendable() || channel.isTextBased())) {
+                const message = await channel.messages.fetch(giveaway.message_id).catch((e) => {
+                    console.error(`[GiveawayEnd] Failed to fetch message ${giveaway.message_id} in channel ${giveaway.channel_id}:`, e);
+                    return null;
+                });
+
                 if (message) {
                     // Rebuild Container for Ended State
                     const container = new ContainerBuilder();
@@ -80,26 +88,40 @@ export async function endGiveaway(client: Bot, giveawayId: number): Promise<Give
 
                     row.addComponents(disabledButton);
 
-                    await message.edit({
-                        components: [container as any, row],
-                        flags: MessageFlags.IsComponentsV2
-                    });
+                    try {
+                        await message.edit({
+                            components: [container as any, row],
+                            flags: MessageFlags.IsComponentsV2
+                        });
+                        console.log(`[GiveawayEnd] Successfully updated giveaway embed ${giveaway.id}`);
+                    } catch (editError) {
+                        console.error(`[GiveawayEnd] Failed to edit message embed for ${giveaway.id}:`, editError);
+                    }
 
                     // Announce winner as a reply to the giveaway message
-                    if (winners.length > 0) {
-                        const winnersString = winners.map(id => `<@${id}>`).join(', ');
-                        await message.reply({
-                            content: `🎉 Congratulations ${winnersString}! You won **${giveaway.prize}**! 🎉`
-                        });
-                    } else {
-                        await message.reply({
-                            content: 'No valid entries, so no winner could be chosen.'
-                        });
+                    try {
+                        if (winners.length > 0) {
+                            const winnersString = winners.map(id => `<@${id}>`).join(', ');
+                            await message.reply({
+                                content: `🎉 Congratulations ${winnersString}! You won **${giveaway.prize}**! 🎉`
+                            });
+                        } else {
+                            await message.reply({
+                                content: 'No valid entries, so no winner could be chosen.'
+                            });
+                        }
+                        console.log(`[GiveawayEnd] Successfully announced winners for ${giveaway.id}`);
+                    } catch (replyError) {
+                        console.error(`[GiveawayEnd] Failed to reply with winners for ${giveaway.id}:`, replyError);
                     }
+                } else {
+                    console.warn(`[GiveawayEnd] Message ${giveaway.message_id} not found.`);
                 }
+            } else {
+                console.warn(`[GiveawayEnd] Channel ${giveaway.channel_id} not found or not sendable. isSendable: ${channel?.isSendable()}`);
             }
         } catch (err) {
-            console.warn(`Could not update message for giveaway ${giveawayId}:`, err);
+            console.error(`[GiveawayEnd] Critical error in message update block for giveaway ${giveawayId}:`, err);
         }
 
         if (winners.length > 0) {

@@ -22,11 +22,13 @@
   "homepage": "https://github.com/Katzo-de/discord-giveaway#readme",
   "dependencies": {
     "@discordjs/builders": "^1.13.1",
+    "@types/uuid": "^10.0.0",
     "better-sqlite3": "^12.6.2",
     "discord.js": "^14.25.1",
     "dotenv": "^17.2.3",
     "mysql2": "^3.16.2",
-    "pg": "^8.17.2"
+    "pg": "^8.17.2",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
