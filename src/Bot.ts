@@ -3,6 +3,7 @@ import { InteractionHandler } from './handlers/InteractionHandler';
 import { EventHandler } from './handlers/EventHandler';
 
 import { GiveawayWorker } from './workers/GiveawayWorker';
+import { giveawayCache } from './utils/GiveawayCache';
 
 export class Bot extends Client {
     public interactionHandler: InteractionHandler;
@@ -31,6 +32,7 @@ export class Bot extends Client {
         await this.eventHandler.loadEvents();
 
         this.giveawayWorker.start();
+        giveawayCache.init(this);
     }
 
     public async stop(): Promise<void> {

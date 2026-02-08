@@ -4,6 +4,7 @@ import { Bot } from '../../Bot';
 import { ButtonBuilder, ButtonStyle, MessageFlags, ModalSubmitInteraction, ActionRowBuilder, ComponentType } from 'discord.js';
 import { createGiveawayContainer } from '../../utils/giveawayUtils';
 import { giveawayCache } from '../../utils/GiveawayCache';
+import { settingsService } from '../../container';
 
 const modal: Modal = {
     customId: 'giveaway_advanced',
@@ -55,16 +56,21 @@ const modal: Modal = {
             // Save back to cache (refresh TTL)
             giveawayCache.save(giveaway, giveawayId);
 
+            // Fetch Guild Settings for Language
+            const settings = await settingsService.getSettings(giveaway.guildId);
+            const lang = settings.language;
+
             // Create Container Preview
             const container = createGiveawayContainer(
-                giveaway.title,
-                giveaway.description,
-                giveaway.prize,
-                giveaway.endTime,
+                giveaway.title || 'Untitled',
+                giveaway.description || 'No description',
+                giveaway.prize || 'No prize',
+                giveaway.endTime || new Date(),
                 giveaway.hostedBy,
                 0,
                 0, // ID 0 for preview
-                winners
+                winners,
+                lang
             );
 
             // Buttons for Preview

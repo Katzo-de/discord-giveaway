@@ -6,6 +6,7 @@ import { parseDuration } from '../../utils/timeUtils';
 import { Bot } from '../../Bot';
 import { TextChannel, ActionRowBuilder, ButtonBuilder, ButtonStyle, ContainerBuilder, TextDisplayBuilder, MessageFlags } from 'discord.js';
 import { createGiveawayContainer } from '../../utils/giveawayUtils';
+import { settingsService } from '../../container';
 
 export class RecurringGiveawayService {
     constructor(
@@ -89,6 +90,10 @@ export class RecurringGiveawayService {
                     content = `<@&${giveaway.ping_role_id}>`;
                 }
 
+                // Fetch Guild Settings for Language
+                const settings = await settingsService.getSettings(recurring.guild_id);
+                const lang = settings.language;
+
                 // Construct Container
                 const container = createGiveawayContainer(
                     giveaway.title,
@@ -98,7 +103,8 @@ export class RecurringGiveawayService {
                     giveaway.hosted_by,
                     0, // 0 participants
                     giveaway.id,
-                    giveaway.winners
+                    giveaway.winners,
+                    lang
                 );
 
                 const row = new ActionRowBuilder<ButtonBuilder>()

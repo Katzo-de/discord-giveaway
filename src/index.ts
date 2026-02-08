@@ -1,10 +1,8 @@
-import { config } from 'dotenv';
+import 'dotenv/config';
 import { Bot } from './Bot';
 import { initDb } from './infrastructure/database/init';
 
 import { dbAdapter } from './container';
-
-config();
 
 const client = new Bot();
 

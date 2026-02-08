@@ -2,7 +2,7 @@ import { Button } from '../../interface/Component';
 import { Bot } from '../../Bot';
 import { MessageFlags, ButtonInteraction, ContainerBuilder, TextDisplayBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { createGiveawayContainer } from '../../utils/giveawayUtils';
-import { giveawayService } from '../../container';
+import { giveawayService, settingsService } from '../../container';
 
 const button: Button = {
     customId: 'join_giveaway',
@@ -58,6 +58,11 @@ const button: Button = {
                     if (channel && channel.isSendable()) {
                         const message = await channel.messages.fetch(fullGiveaway.message_id).catch(() => null);
                         if (message) {
+
+                            // Fetch Guild Settings for Language
+                            const settings = await settingsService.getSettings(fullGiveaway.guild_id);
+                            const lang = settings.language;
+
                             const container = createGiveawayContainer(
                                 fullGiveaway.title,
                                 fullGiveaway.description,
@@ -66,7 +71,8 @@ const button: Button = {
                                 fullGiveaway.hosted_by,
                                 participantCount,
                                 fullGiveaway.id,
-                                fullGiveaway.winners
+                                fullGiveaway.winners,
+                                lang
                             );
 
                             // Reconstruct buttons to ensure consistency

@@ -1,6 +1,9 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, Client, ContainerBuilder, TextDisplayBuilder, MessageFlags } from 'discord.js';
+import { ActionRowBuilder, ButtonStyle, EmbedBuilder, Client, MessageFlags, SeparatorSpacingSize, RoleSelectMenuBuilder, StringSelectMenuOptionBuilder } from 'discord.js';
 import { Bot } from '../Bot';
-import { giveawayService } from '../container';
+import { giveawayService, settingsService } from '../container';
+import { StringSelectMenuBuilder, ContainerBuilder, TextDisplayBuilder, ButtonBuilder } from '@discordjs/builders';
+import { getTranslation } from './languageUtils';
+import { GuildSettings } from '../domain/entities/GuildSettings';
 
 export interface GiveawayResult {
     success: boolean;
@@ -34,6 +37,10 @@ export async function endGiveaway(client: Bot, giveawayId: number): Promise<Give
         // So we update our local object state or re-fetch.
         giveaway.ended = true;
 
+        // Fetch guild settings for language
+        const settings = await settingsService.getSettings(giveaway.guild_id);
+        const lang = settings.language;
+
         if (giveaway.message_id === 'DRAFT') {
             return { success: true, message: 'Draft giveaway ended (cleaned up).' };
         }
@@ -60,20 +67,20 @@ export async function endGiveaway(client: Bot, giveawayId: number): Promise<Give
                     const container = new ContainerBuilder();
 
                     const titleDisplay = new TextDisplayBuilder()
-                        .setContent(`# 🛑 [ENDED] ${giveaway.title} 🛑`);
+                        .setContent(`# 🛑 [${getTranslation('giveaway.ended', lang).toUpperCase()}] ${giveaway.title} 🛑`);
 
                     const descDisplay = new TextDisplayBuilder()
                         .setContent(giveaway.description);
 
                     const winnersText = winners.length > 0
                         ? winners.map(id => `<@${id}>`).join(', ')
-                        : 'No winners.';
+                        : getTranslation('giveaway.ended.no_winners', lang);
 
                     const infoDisplay = new TextDisplayBuilder()
-                        .setContent(`🏆 **Prize:** ${giveaway.prize}\n👑 **Winners:** ${winnersText}\n👤 **Hosted By:** <@${giveaway.hosted_by}>\n👥 **Participants:** ${entryCount}`);
+                        .setContent(`🏆 **${getTranslation('giveaway.prize', lang)}:** ${giveaway.prize}\n👑 **${getTranslation('giveaway.winners', lang)}:** ${winnersText}\n👤 **${getTranslation('giveaway.hosted_by', lang)}:** <@${giveaway.hosted_by}>\n👥 **${getTranslation('giveaway.participants', lang)}:** ${entryCount}`);
 
                     const footerDisplay = new TextDisplayBuilder()
-                        .setContent(`Ended • ID: ${giveaway.id}`);
+                        .setContent(`${getTranslation('giveaway.ended', lang)} • ID: ${giveaway.id}`);
 
                     container.addTextDisplayComponents(titleDisplay, descDisplay, infoDisplay, footerDisplay);
 
@@ -82,7 +89,7 @@ export async function endGiveaway(client: Bot, giveawayId: number): Promise<Give
 
                     const disabledButton = new ButtonBuilder()
                         .setCustomId('giveaway_ended')
-                        .setLabel('Ended')
+                        .setLabel(getTranslation('giveaway.ended', lang))
                         .setStyle(ButtonStyle.Secondary)
                         .setDisabled(true);
 
@@ -103,11 +110,11 @@ export async function endGiveaway(client: Bot, giveawayId: number): Promise<Give
                         if (winners.length > 0) {
                             const winnersString = winners.map(id => `<@${id}>`).join(', ');
                             await message.reply({
-                                content: `🎉 Congratulations ${winnersString}! You won **${giveaway.prize}**! 🎉`
+                                content: getTranslation('giveaway.winner.message', lang, { winners: winnersString, prize: giveaway.prize })
                             });
                         } else {
                             await message.reply({
-                                content: 'No valid entries, so no winner could be chosen.'
+                                content: getTranslation('giveaway.no_entries', lang)
                             });
                         }
                         console.log(`[GiveawayEnd] Successfully announced winners for ${giveaway.id}`);
@@ -157,6 +164,10 @@ export async function rerollGiveaway(client: Bot, giveawayId: number): Promise<G
             return { success: false, message: 'No entries found for this giveaway.' };
         }
 
+        // Fetch guild settings for language
+        const settings = await settingsService.getSettings(giveaway.guild_id);
+        const lang = settings.language;
+
         const winnerId = winners[0];
 
         // Fetch and reply to the original message
@@ -166,7 +177,7 @@ export async function rerollGiveaway(client: Bot, giveawayId: number): Promise<G
                 const message = await channel.messages.fetch(giveaway.message_id).catch(() => null);
                 if (message) {
                     await message.reply({
-                        content: `🎉 **Reroll:** The new winner is <@${winnerId}>! Congratulations!`
+                        content: getTranslation('giveaway.reroll.message', lang, { winner: `<@${winnerId}>` })
                     });
                 }
             }
@@ -174,7 +185,7 @@ export async function rerollGiveaway(client: Bot, giveawayId: number): Promise<G
             console.warn(`Could not fetch message for giveaway ${giveawayId} during reroll:`, err);
         }
 
-        return { success: true, message: `Rerolled! New winner: <@${winnerId}>`, winnerIds: [winnerId] };
+        return { success: true, message: getTranslation('giveaway.reroll.success', lang, { winner: `<@${winnerId}>` }), winnerIds: [winnerId] };
 
     } catch (error) {
         console.error('Error rerolling giveaway:', error);
@@ -190,7 +201,8 @@ export function createGiveawayContainer(
     hostedByUserId: string,
     participantCount: number,
     giveawayId?: number | string,
-    winnerCount: number = 1
+    winnerCount: number = 1,
+    lang: string = 'en'
 ): ContainerBuilder {
     const container = new ContainerBuilder();
 
@@ -201,13 +213,194 @@ export function createGiveawayContainer(
         .setContent(description);
 
     const infoDisplay = new TextDisplayBuilder()
-        .setContent(`🏆 **Prize:** ${prize}\n⏰ **Ends:** <t:${Math.floor(endTime.getTime() / 1000)}:R>\n👤 **Hosted By:** <@${hostedByUserId}>\n👥 **Participants:** ${participantCount}\n🎫 **Winners:** ${winnerCount}`);
+        .setContent(`🏆 **${getTranslation('giveaway.prize', lang)}:** ${prize}\n⏰ **${getTranslation('giveaway.ends', lang)}:** <t:${Math.floor(endTime.getTime() / 1000)}:R>\n👤 **${getTranslation('giveaway.hosted_by', lang)}:** <@${hostedByUserId}>\n👥 **${getTranslation('giveaway.participants', lang)}:** ${participantCount}\n🎫 **${getTranslation('giveaway.winners', lang)}:** ${winnerCount}`);
 
-    const footerText = giveawayId ? `Ends at • ID: ${giveawayId}` : `Ends at • ID: (Pending)`;
+    const footerText = giveawayId ? `${getTranslation('giveaway.ends', lang)} • ID: ${giveawayId}` : `${getTranslation('giveaway.ends', lang)} • ID: (Pending)`;
     const footerDisplay = new TextDisplayBuilder()
         .setContent(footerText);
 
     container.addTextDisplayComponents(titleDisplay, descDisplay, infoDisplay, footerDisplay);
+
+    return container;
+}
+
+
+export function wizardGiveawayContainer(lang: string = 'en', draftId?: string, draft?: any): ContainerBuilder { // draft type any for now or GiveawayData if imported
+    const container = new ContainerBuilder();
+
+    const idSuffix = draftId ? `:${draftId}` : '';
+
+    container.addTextDisplayComponents(
+        (textDisplay) => textDisplay.setContent(`## 🎉 ${getTranslation('wizard.title', lang)}`),
+        (textDisplay) => textDisplay.setContent(getTranslation('wizard.description', lang)),
+    ).addSeparatorComponents((separator) => separator.setSpacing(SeparatorSpacingSize.Large))
+
+    // Step 1
+    const step1Title = draft?.title ? `✅ ${getTranslation('wizard.step1.title', lang)}` : `### ${getTranslation('wizard.step1.title', lang)}`;
+    const step1Desc = draft?.title
+        ? `**Title:** ${draft.title}\n**Prize:** ${draft.prize}`
+        : getTranslation('wizard.step1.description', lang);
+
+    container.addSectionComponents((section) =>
+        section
+            .addTextDisplayComponents(
+                (textDisplay) => textDisplay.setContent(step1Title),
+                (textDisplay) => textDisplay.setContent(step1Desc),
+            )
+            .setButtonAccessory((button) =>
+                button.setCustomId(`wizard_step_1${idSuffix}`).setLabel(getTranslation('wizard.step1.button', lang)).setStyle(ButtonStyle.Primary),
+            )
+    ).addActionRowComponents((actionRow) =>
+        actionRow.setComponents(
+            new StringSelectMenuBuilder()
+                .setCustomId(`wizard_template_select${idSuffix}`)
+                .setPlaceholder(getTranslation('wizard.step1.select.placeholder', lang))
+                .addOptions({
+                    label: getTranslation('wizard.step1.select.no_templates', lang),
+                    value: 'no_templates',
+                    description: getTranslation('wizard.step1.select.create_template', lang)
+                })
+        ),
+    ).addSeparatorComponents((separator) => separator.setSpacing(SeparatorSpacingSize.Large));
+
+    // Step 2
+    const step2Title = draft?.endTime ? `✅ ${getTranslation('wizard.step2.title', lang)}` : `### ${getTranslation('wizard.step2.title', lang)}`;
+    let step2Desc = getTranslation('wizard.step2.description', lang);
+    if (draft?.endTime) {
+        step2Desc = `**Ends:** <t:${Math.floor(draft.endTime.getTime() / 1000)}:R>`;
+        if (draft.winners) {
+            step2Desc += `\n**Winners:** ${draft.winners}`;
+        }
+    }
+
+    container.addSectionComponents((section) =>
+        section
+            .addTextDisplayComponents(
+                (textDisplay) => textDisplay.setContent(step2Title),
+                (textDisplay) => textDisplay.setContent(step2Desc),
+            )
+            .setButtonAccessory((button) =>
+                button.setCustomId(`wizard_step_2${idSuffix}`).setLabel(getTranslation('wizard.step2.button', lang)).setStyle(ButtonStyle.Primary),
+            ),
+    ).addSeparatorComponents((separator) => separator.setSpacing(SeparatorSpacingSize.Large));
+
+    // Step 3
+    // Mock Schedule check - we don't have draft.schedule yet really, but let's assume if we did
+    // or just show default for now since it's mock
+    const step3Title = `### ${getTranslation('wizard.step3.title', lang)}`;
+    // If we had provisions for schedule in draft, we'd check it here. 
+    // For now, since it's mock, we always show default state (no checkmark) or maybe we check if user visited?
+    // Let's keep it simple: No checkmark for optional mock step yet.
+
+    const step3Desc = getTranslation('wizard.step3.description', lang);
+
+    container.addSectionComponents((section) =>
+        section
+            .addTextDisplayComponents(
+                (textDisplay) => textDisplay.setContent(step3Title),
+                (textDisplay) => textDisplay.setContent(step3Desc),
+            )
+            .setButtonAccessory((button) =>
+                button.setCustomId(`wizard_step_3${idSuffix}`).setLabel(getTranslation('wizard.step3.button', lang)).setStyle(ButtonStyle.Primary),
+            ),
+    ).addSeparatorComponents((separator) => separator.setSpacing(SeparatorSpacingSize.Large));
+
+    container.addTextDisplayComponents(
+        (textDisplay) =>
+            textDisplay.setContent(
+                `### ${getTranslation('wizard.review.title', lang)}\n${getTranslation('wizard.review.description', lang)}`,
+            ),
+    );
+
+    const isPublishable = draft?.title && draft?.endTime && draft?.winners;
+
+    container.addActionRowComponents((actionRow) =>
+        actionRow.setComponents(
+            new ButtonBuilder().setCustomId(`wizard_preview${idSuffix}`).setLabel(getTranslation('wizard.button.preview', lang)).setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId(`wizard_template${idSuffix}`).setLabel(getTranslation('wizard.button.template', lang)).setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId(`wizard_publish${idSuffix}`).setLabel(getTranslation('wizard.button.publish', lang)).setStyle(isPublishable ? ButtonStyle.Success : ButtonStyle.Secondary).setDisabled(!isPublishable)
+        )
+    );
+
+    return container;
+}
+
+export function settingsContainer(settings: GuildSettings | null, lang: string): ContainerBuilder {
+    const container = new ContainerBuilder();
+
+    // 1. Header
+    container.addTextDisplayComponents(
+        (textDisplay) => textDisplay.setContent(`## ${getTranslation('settings.title', lang)}`)
+    ).addSeparatorComponents((separator) => separator.setSpacing(SeparatorSpacingSize.Large));
+
+    // 2. Language Settings
+    container.addTextDisplayComponents(
+        (textDisplay) => textDisplay.setContent(`### ${getTranslation('settings.language.name', lang)}`),
+        (textDisplay) => textDisplay.setContent(getTranslation('settings.language.description', lang))
+    ).addActionRowComponents((row) =>
+        row.setComponents(
+            new StringSelectMenuBuilder()
+                .setCustomId('settings_language')
+                .setPlaceholder(getTranslation('settings.language.name', lang))
+                .addOptions(
+                    new StringSelectMenuOptionBuilder()
+                        .setLabel('English')
+                        .setValue('en')
+                        .setDefault(lang === 'en'),
+                    new StringSelectMenuOptionBuilder()
+                        .setLabel('Deutsch')
+                        .setValue('de')
+                        .setDefault(lang === 'de')
+                )
+        )
+    ).addSeparatorComponents((separator) => separator.setSpacing(SeparatorSpacingSize.Large));
+
+    // 3. Role Settings
+    const roleSelect = new RoleSelectMenuBuilder()
+        .setCustomId('settings_role')
+        .setPlaceholder(getTranslation('settings.role.name', lang));
+
+    if (settings?.manager_role_id) {
+        roleSelect.addDefaultRoles([settings.manager_role_id]);
+    }
+
+    container.addTextDisplayComponents(
+        (textDisplay) => textDisplay.setContent(`### ${getTranslation('settings.role.name', lang)}`),
+        (textDisplay) => textDisplay.setContent(getTranslation('settings.role.description', lang))
+    ).addActionRowComponents((row) =>
+        row.setComponents(roleSelect)
+    ).addSeparatorComponents((separator) => separator.setSpacing(SeparatorSpacingSize.Large));
+
+    // 4. Schedule Management using ButtonAccessory (MUST be a Section)
+    container.addSectionComponents((section) =>
+        section
+            .addTextDisplayComponents(
+                (textDisplay) => textDisplay.setContent(`### ${getTranslation('settings.schedule.name', lang)}`),
+                (textDisplay) => textDisplay.setContent(getTranslation('settings.schedule.description', lang))
+            )
+            .setButtonAccessory((button) =>
+                button.setCustomId('settings_schedule_manage')
+                    .setLabel(getTranslation('settings.schedule.button', lang))
+                    .setStyle(ButtonStyle.Primary)
+            )
+    ).addSeparatorComponents((separator) => separator.setSpacing(SeparatorSpacingSize.Large));
+
+    // 5. Template Management (Action Row -> Direct)
+    container.addTextDisplayComponents(
+        (textDisplay) => textDisplay.setContent(`### ${getTranslation('settings.template.name', lang)}`),
+        (textDisplay) => textDisplay.setContent(getTranslation('settings.template.description', lang))
+    ).addActionRowComponents((row) =>
+        row.setComponents(
+            new ButtonBuilder()
+                .setCustomId('template_create_btn')
+                .setLabel(getTranslation('settings.template.create', lang))
+                .setStyle(ButtonStyle.Success),
+            new ButtonBuilder()
+                .setCustomId('template_delete_btn')
+                .setLabel(getTranslation('settings.template.delete', lang))
+                .setStyle(ButtonStyle.Danger)
+        )
+    );
 
     return container;
 }

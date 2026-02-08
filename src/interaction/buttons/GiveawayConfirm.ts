@@ -3,7 +3,7 @@ import { Button } from '../../interface/Component';
 import { Bot } from '../../Bot';
 import { ButtonInteraction, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle, ContainerBuilder, TextDisplayBuilder } from 'discord.js';
 import { createGiveawayContainer } from '../../utils/giveawayUtils';
-import { giveawayService } from '../../container';
+import { giveawayService, settingsService } from '../../container';
 import { giveawayCache } from '../../utils/GiveawayCache';
 
 const button: Button = {
@@ -36,6 +36,11 @@ const button: Button = {
                 return;
             }
 
+            if (!draft.title || !draft.description || !draft.prize || !draft.endTime) {
+                await interaction.followUp({ content: 'Giveaway data is incomplete. Please restart.', flags: MessageFlags.Ephemeral });
+                return;
+            }
+
             // Create REAL Giveaway in Database
             const giveaway = await giveawayService.createGiveaway({
                 message_id: 'PENDING', // Will update below
@@ -55,6 +60,10 @@ const button: Button = {
                 return;
             }
 
+            // Fetch Guild Settings for Language
+            const settings = await settingsService.getSettings(draft.guildId);
+            const lang = settings.language;
+
             // Create Container with REAL ID
             const container = createGiveawayContainer(
                 giveaway.title,
@@ -64,7 +73,8 @@ const button: Button = {
                 giveaway.hosted_by,
                 0,
                 giveaway.id,
-                giveaway.winners || 1
+                giveaway.winners || 1,
+                lang
             );
 
             // Buttons

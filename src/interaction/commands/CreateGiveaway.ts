@@ -1,57 +1,48 @@
-import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, MessageFlags } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { Command } from '../../interface/Command';
 import { Bot } from '../../Bot';
-import { templateService } from '../../container';
+import { wizardGiveawayContainer } from '../../utils/giveawayUtils';
+import { giveawayCache } from '../../utils/GiveawayCache';
 
 const command: Command = {
     data: new SlashCommandBuilder()
         .setName('gcreate')
-        .setDescription('Create a new giveaway via setup wizard')
-        .addStringOption(option =>
-            option.setName('template')
-                .setDescription('Name of the template to use (optional)')
-                .setRequired(false)
-        ) as SlashCommandBuilder,
+        .setDescription('Start the giveaway creation wizard') as SlashCommandBuilder,
     execute: async (client: Bot, interaction) => {
-        const templateName = interaction.options.getString('template');
-        let customId = 'giveaway_duration';
+        try {
+            const locale = interaction.locale;
+            const lang = locale.startsWith('de') ? 'de' : 'en'; // Simple mapping
 
-        if (templateName && interaction.guildId) {
-            const template = await templateService.getTemplate(interaction.guildId, templateName);
-            if (template) {
-                customId += `:${template.id}`;
+            // Create a new draft
+            const draftId = giveawayCache.save({
+                hostedBy: interaction.user.id,
+                channelId: interaction.channelId!,
+                guildId: interaction.guildId!,
+                step: 0
+            });
+            const draft = giveawayCache.get(draftId!);
+
+            const container = wizardGiveawayContainer(lang, draftId, draft);
+
+            await interaction.reply({
+                components: [container as any],
+                flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral
+            });
+
+            // Fetch and store the message ID for cleanup
+            const message = await interaction.fetchReply();
+            if (draft) {
+                draft.wizardMessageId = message.id;
+                giveawayCache.save(draft, draftId);
+            }
+        } catch (error) {
+            console.error('Error sending giveaway wizard:', error);
+            if (interaction.replied || interaction.deferred) {
+                await interaction.followUp({ content: 'Failed to start giveaway wizard.', flags: MessageFlags.Ephemeral });
             } else {
-                await interaction.reply({ content: `Template "${templateName}" not found.`, flags: MessageFlags.Ephemeral });
-                return;
+                await interaction.reply({ content: 'Failed to start giveaway wizard.', flags: MessageFlags.Ephemeral });
             }
         }
-
-        const select = new StringSelectMenuBuilder()
-            .setCustomId(customId)
-            .setPlaceholder('Select a duration for the giveaway')
-            .addOptions(
-                new StringSelectMenuOptionBuilder().setLabel('1 Hour').setValue('1h'),
-                new StringSelectMenuOptionBuilder().setLabel('2 Hours').setValue('2h'),
-                new StringSelectMenuOptionBuilder().setLabel('4 Hours').setValue('4h'),
-                new StringSelectMenuOptionBuilder().setLabel('8 Hours').setValue('8h'),
-                new StringSelectMenuOptionBuilder().setLabel('12 Hours').setValue('12h'),
-                new StringSelectMenuOptionBuilder().setLabel('24 Hours').setValue('24h'),
-                new StringSelectMenuOptionBuilder().setLabel('2 Days').setValue('2d'),
-                new StringSelectMenuOptionBuilder().setLabel('5 Days').setValue('5d'),
-                new StringSelectMenuOptionBuilder().setLabel('7 Days').setValue('7d'),
-
-                new StringSelectMenuOptionBuilder().setLabel('Specific Date').setValue('Date'),
-                new StringSelectMenuOptionBuilder().setLabel('Custom Duration').setValue('Custom')
-            );
-
-        const row = new ActionRowBuilder<StringSelectMenuBuilder>()
-            .addComponents(select);
-
-        await interaction.reply({
-            content: templateName ? `Using template: **${templateName}**. Please select a duration:` : 'Please select a duration for the giveaway:',
-            components: [row],
-            flags: MessageFlags.Ephemeral
-        });
     }
 };
 
