@@ -3,6 +3,7 @@ import { Bot } from '../../Bot';
 import { ModalSubmitInteraction, MessageFlags } from 'discord.js';
 import { giveawayCache } from '../../utils/GiveawayCache';
 import { wizardGiveawayContainer } from '../../utils/giveawayUtils';
+import { settingsService } from '../../container';
 import { parseDuration, parseDate } from '../../utils/timeUtils';
 
 const modal: Modal = {
@@ -56,7 +57,11 @@ const modal: Modal = {
             } else {
                 const dateParts = durationInput.split(' ');
                 if (dateParts.length === 2) {
-                    endTime = parseDate(dateParts[0], dateParts[1]);
+                    // Fetch Guild Settings for Timezone
+                    const settings = await settingsService.getSettings(interaction.guildId!);
+                    const timezone = settings.timezone || 'UTC';
+
+                    endTime = parseDate(dateParts[0], dateParts[1], timezone);
                 }
                 // If it's a fixed date, we don't store durationMs, so it relies on endTime (fixed point)
                 delete draft.durationMs;

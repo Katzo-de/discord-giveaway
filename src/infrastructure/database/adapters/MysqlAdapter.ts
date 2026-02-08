@@ -13,7 +13,8 @@ export class MysqlAdapter implements IDatabase {
             database: process.env.DB_NAME || 'discord_giveaway',
             waitForConnections: true,
             connectionLimit: 10,
-            queueLimit: 0
+            queueLimit: 0,
+            timezone: '+00:00'
         });
     }
 

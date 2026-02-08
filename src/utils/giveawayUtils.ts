@@ -355,6 +355,28 @@ export function settingsContainer(settings: GuildSettings | null, lang: string):
         )
     ).addSeparatorComponents((separator) => separator.setSpacing(SeparatorSpacingSize.Large));
 
+    // 2.5 Timezone Settings
+    const currentTz = settings?.timezone || 'UTC';
+    container.addTextDisplayComponents(
+        (textDisplay) => textDisplay.setContent(`### ${getTranslation('settings.timezone.name', lang)}`),
+        (textDisplay) => textDisplay.setContent(getTranslation('settings.timezone.description', lang) + `\n**${getTranslation('settings.timezone.current', lang)}**: \`${currentTz}\``)
+    ).addActionRowComponents((row) =>
+        row.setComponents(
+            new StringSelectMenuBuilder()
+                .setCustomId('settings_timezone')
+                .setPlaceholder(getTranslation('settings.timezone.placeholder', lang))
+                .addOptions(
+                    // Common Timezones
+                    new StringSelectMenuOptionBuilder().setLabel('UTC (Coordinated Universal Time)').setValue('UTC').setDefault(currentTz === 'UTC'),
+                    new StringSelectMenuOptionBuilder().setLabel('Europe/Berlin (CET/CEST)').setValue('Europe/Berlin').setDefault(currentTz === 'Europe/Berlin'),
+                    new StringSelectMenuOptionBuilder().setLabel('Europe/London (GMT/BST)').setValue('Europe/London').setDefault(currentTz === 'Europe/London'),
+                    new StringSelectMenuOptionBuilder().setLabel('America/New_York (EST/EDT)').setValue('America/New_York').setDefault(currentTz === 'America/New_York'),
+                    new StringSelectMenuOptionBuilder().setLabel('America/Los_Angeles (PST/PDT)').setValue('America/Los_Angeles').setDefault(currentTz === 'America/Los_Angeles'),
+                    new StringSelectMenuOptionBuilder().setLabel('Asia/Tokyo (JST)').setValue('Asia/Tokyo').setDefault(currentTz === 'Asia/Tokyo')
+                )
+        )
+    ).addSeparatorComponents((separator) => separator.setSpacing(SeparatorSpacingSize.Large));
+
     // 3. Role Settings
     const roleSelect = new RoleSelectMenuBuilder()
         .setCustomId('settings_role')

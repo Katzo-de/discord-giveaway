@@ -16,6 +16,11 @@ export const translations: Record<string, Record<string, string>> = {
         'settings.no_permission': 'You do not have the required permissions to perform this action.',
         'settings.language.updated': 'Language has been updated to English.',
         'settings.role.updated': 'Manager role has been updated to {role}.',
+        'settings.timezone.name': 'Timezone Configuration',
+        'settings.timezone.description': 'Select your server\'s timezone to ensure giveaway start and end times are accurate for your users.',
+        'settings.timezone.current': 'Current Timezone',
+        'settings.timezone.placeholder': 'Select Timezone',
+        'settings.timezone.updated': 'Timezone has been updated to {timezone}.',
 
         // Wizard
         'wizard.title': 'Giveaway Wizard',
@@ -78,6 +83,11 @@ export const translations: Record<string, Record<string, string>> = {
         'settings.no_permission': 'Du hast nicht die erforderlichen Berechtigungen, um diese Aktion durchzuführen.',
         'settings.language.updated': 'Sprache wurde auf Deutsch aktualisiert.',
         'settings.role.updated': 'Manager Rolle wurde auf {role} aktualisiert.',
+        'settings.timezone.name': 'Zeitzonen-Konfiguration',
+        'settings.timezone.description': 'Wähle die Zeitzone deines Servers, damit Start- und Endzeiten für deine Benutzer korrekt angezeigt werden.',
+        'settings.timezone.current': 'Aktuelle Zeitzone',
+        'settings.timezone.placeholder': 'Zeitzone wählen',
+        'settings.timezone.updated': 'Zeitzone wurde auf {timezone} aktualisiert.',
 
         // Wizard
         'wizard.title': 'Gewinnspiel-Assistent',

@@ -13,7 +13,8 @@ export class SettingsService {
         return {
             guild_id: guildId,
             language: 'en',
-            manager_role_id: null
+            manager_role_id: null,
+            timezone: 'UTC'
         };
     }
 

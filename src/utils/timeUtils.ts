@@ -21,7 +21,9 @@ export function parseDuration(input: string): number | null {
     return hasMatch ? totalMs : null;
 }
 
-export function parseDate(dateStr: string, timeStr: string): Date | null {
+import { toDate } from 'date-fns-tz';
+
+export function parseDate(dateStr: string, timeStr: string, timezone: string = 'UTC'): Date | null {
     // Expected format: DD.MM for date, HH:mm for time
     const dateRegex = /^(\d{1,2})\.(\d{1,2})$/;
     const timeRegex = /^(\d{1,2}):(\d{1,2})$/;
@@ -40,12 +42,20 @@ export function parseDate(dateStr: string, timeStr: string): Date | null {
     // Start with current year
     let year = now.getFullYear();
 
-    let targetDate = new Date(year, month, day, hour, minute);
+    // Construct string for parsing: YYYY-MM-DDTHH:mm:00
+    // We use toDate from date-fns-tz to parse this "local time" string into a Date object (UTC)
+    // based on the provided timezone.
+
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    let isoString = `${year}-${pad(month + 1)}-${pad(day)}T${pad(hour)}:${pad(minute)}:00`;
+
+    let targetDate = toDate(isoString, { timeZone: timezone });
 
     // If the constructed date is in the past, assume it's meant for next year
     if (targetDate.getTime() <= now.getTime()) {
         year++;
-        targetDate = new Date(year, month, day, hour, minute);
+        isoString = `${year}-${pad(month + 1)}-${pad(day)}T${pad(hour)}:${pad(minute)}:00`;
+        targetDate = toDate(isoString, { timeZone: timezone });
     }
 
     return targetDate;
