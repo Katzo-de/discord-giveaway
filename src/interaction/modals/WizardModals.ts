@@ -3,7 +3,7 @@ import { Bot } from '../../Bot';
 import { ModalSubmitInteraction, MessageFlags } from 'discord.js';
 import { giveawayCache } from '../../utils/GiveawayCache';
 import { wizardGiveawayContainer } from '../../utils/giveawayUtils';
-import { settingsService } from '../../container';
+import { settingsService, templateService } from '../../container';
 import { parseDuration, parseDate } from '../../utils/timeUtils';
 
 const modal: Modal = {
@@ -122,7 +122,10 @@ const modal: Modal = {
         // Update Wizard Message
         const locale = interaction.locale;
         const lang = locale.startsWith('de') ? 'de' : 'en';
-        const container = wizardGiveawayContainer(lang, draftId, draft);
+
+        // Fetch templates
+        const templates = await templateService.getTemplates(interaction.guildId!);
+        const container = wizardGiveawayContainer(lang, draftId, draft, templates);
 
         if (interaction.isFromMessage()) {
             await interaction.update({

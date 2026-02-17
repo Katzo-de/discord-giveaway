@@ -3,6 +3,7 @@ import { Command } from '../../interface/Command';
 import { Bot } from '../../Bot';
 import { wizardGiveawayContainer } from '../../utils/giveawayUtils';
 import { giveawayCache } from '../../utils/GiveawayCache';
+import { templateService } from '../../container';
 
 const command: Command = {
     data: new SlashCommandBuilder()
@@ -22,7 +23,9 @@ const command: Command = {
             });
             const draft = giveawayCache.get(draftId!);
 
-            const container = wizardGiveawayContainer(lang, draftId, draft);
+            // Fetch templates
+            const templates = await templateService.getTemplates(interaction.guildId!);
+            const container = wizardGiveawayContainer(lang, draftId, draft, templates);
 
             await interaction.reply({
                 components: [container as any],

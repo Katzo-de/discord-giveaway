@@ -4,6 +4,7 @@ import { giveawayService, settingsService } from '../container';
 import { StringSelectMenuBuilder, ContainerBuilder, TextDisplayBuilder, ButtonBuilder } from '@discordjs/builders';
 import { getTranslation } from './languageUtils';
 import { GuildSettings } from '../domain/entities/GuildSettings';
+import { GiveawayTemplate } from '../domain/entities/GiveawayTemplate';
 
 export interface GiveawayResult {
     success: boolean;
@@ -225,7 +226,7 @@ export function createGiveawayContainer(
 }
 
 
-export function wizardGiveawayContainer(lang: string = 'en', draftId?: string, draft?: any): ContainerBuilder { // draft type any for now or GiveawayData if imported
+export function wizardGiveawayContainer(lang: string = 'en', draftId?: string, draft?: any, templates: GiveawayTemplate[] = []): ContainerBuilder { // draft type any for now or GiveawayData if imported
     const container = new ContainerBuilder();
 
     const idSuffix = draftId ? `:${draftId}` : '';
@@ -241,6 +242,18 @@ export function wizardGiveawayContainer(lang: string = 'en', draftId?: string, d
         ? `**Title:** ${draft.title}\n**Prize:** ${draft.prize}`
         : getTranslation('wizard.step1.description', lang);
 
+    const templateOptions = templates.length > 0
+        ? templates.map(t => ({
+            label: t.name,
+            value: t.name,
+            description: t.title.substring(0, 100) // Truncate description if needed or use title
+        }))
+        : [{
+            label: getTranslation('wizard.step1.select.no_templates', lang),
+            value: 'no_templates',
+            description: getTranslation('wizard.step1.select.create_template', lang)
+        }];
+
     container.addSectionComponents((section) =>
         section
             .addTextDisplayComponents(
@@ -255,11 +268,7 @@ export function wizardGiveawayContainer(lang: string = 'en', draftId?: string, d
             new StringSelectMenuBuilder()
                 .setCustomId(`wizard_template_select${idSuffix}`)
                 .setPlaceholder(getTranslation('wizard.step1.select.placeholder', lang))
-                .addOptions({
-                    label: getTranslation('wizard.step1.select.no_templates', lang),
-                    value: 'no_templates',
-                    description: getTranslation('wizard.step1.select.create_template', lang)
-                })
+                .addOptions(templateOptions)
         ),
     ).addSeparatorComponents((separator) => separator.setSpacing(SeparatorSpacingSize.Large));
 

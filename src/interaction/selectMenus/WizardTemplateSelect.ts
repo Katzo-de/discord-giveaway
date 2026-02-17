@@ -3,7 +3,8 @@ import { Bot } from '../../Bot';
 import { StringSelectMenuInteraction, MessageFlags } from 'discord.js';
 import { giveawayCache } from '../../utils/GiveawayCache';
 import { wizardGiveawayContainer } from '../../utils/giveawayUtils';
-// import { templateService } from '../../container'; // Assumed service exists
+import { templateService } from '../../container';
+import { parseDuration } from '../../utils/timeUtils';
 
 const selectMenu: SelectMenu = {
     customId: 'wizard_template_select', // base
@@ -28,21 +29,37 @@ const selectMenu: SelectMenu = {
             return;
         }
 
-        // TODO: Load Template Data
-        // const template = await templateService.getTemplate(interaction.guildId!, choice);
-        // if (template) {
-        //     draft.title = template.title;
-        //     draft.description = template.description;
-        //     draft.prize = template.prize;
-        //     draft.winners = template.winners; // if exists
-        //     // Duration handling...
-        //     giveawayCache.save(draft, draftId);
-        // }
+        // Load Template Data
+        const template = await templateService.getTemplate(interaction.guildId!, choice);
+
+        if (template) {
+            draft.title = template.title;
+            draft.description = template.description;
+            draft.prize = template.prize;
+            // draft.winners = template.winners; // Template doesn't have winners currently
+
+            // Parse Duration from Template if present
+            if (template.duration) {
+                const durationMs = parseDuration(template.duration);
+                if (durationMs) {
+                    draft.durationMs = durationMs;
+                    // We set endTime based on current time + duration
+                    // This is an approximation for the wizard preview, actual start time will be when published (if duration usage is implied)
+                    // Or if template has fixed duration, we use that.
+                    draft.endTime = new Date(Date.now() + durationMs);
+                }
+            }
+
+            giveawayCache.save(draft, draftId);
+        }
 
         // Re-render
         const locale = interaction.locale;
         const lang = locale.startsWith('de') ? 'de' : 'en';
-        const container = wizardGiveawayContainer(lang, draftId, draft);
+
+        // Fetch templates
+        const templates = await templateService.getTemplates(interaction.guildId!);
+        const container = wizardGiveawayContainer(lang, draftId, draft, templates);
 
         await interaction.update({
             components: [container as any],
